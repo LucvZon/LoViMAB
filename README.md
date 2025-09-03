@@ -1,2 +1,16 @@
 # LoViMAB
-Long-Read Viral Metagenome Assembly Benchmark (LoViMAB) is a pipeline made to compare metagenomic assemblies of viral nanopore reads.
+Long-Read Viral Metagenome Assembly Benchmark (LoViMAB) is a scalable and reproducible Snakemake workflow designed to benchmark the performance of various long-read assemblers on viral metagenomic Nanopore data.
+
+Assembling complete viral genomes from complex metagenomes is a significant challenge. This pipeline addresses this by implementing a "semi-targeted" approach:
+
+1. **Targeted Read Filtering**: Pre-filters raw Nanopore reads using a custom protein database (e.g., all human viruses) to enrich for sequences of interest.
+2. **Comparative Assembly**: Assembles the filtered reads using multiple state-of-the-art assemblers.
+3. **In-depth Quality Assessment**: Performs comprehensive, reference-free (CheckV) and reference-based (QUAST) quality control to generate detailed comparison reports.
+
+This workflow is designed to help researchers evaluate which assembly tool is most appropriate for their data, especially in scenarios where reliable reference genomes are unavailable or highly diverse.
+
+Current supported assemblers:
+- metaFlye
+- Canu
+- Raven
+- PenguiN
