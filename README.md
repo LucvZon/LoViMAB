@@ -5,12 +5,12 @@ Assembling complete viral genomes from complex metagenomes is a significant chal
 
 1. **Targeted Read Filtering**: Pre-filters raw Nanopore reads using a custom protein database (e.g., all human viruses) to enrich for sequences of interest.
 2. **Comparative Assembly**: Assembles the filtered reads using multiple state-of-the-art assemblers.
-3. **In-depth Quality Assessment**: Performs comprehensive, reference-free (CheckV) and reference-based (QUAST) quality control to generate detailed comparison reports.
+3. **In-depth Quality Assessment**: Performs comprehensive, reference-free ([CheckV](https://bitbucket.org/berkeleylab/checkv)) and reference-based ([QUAST](https://github.com/ablab/quast)) quality control to generate detailed comparison reports.
 
 This workflow is designed to help researchers evaluate which assembly tool is most appropriate for their data, especially in scenarios where reliable reference genomes are unavailable or highly diverse.
 
 Current supported assemblers:
-- metaFlye
-- Canu
-- Raven
-- PenguiN
+- [metaFlye](https://github.com/mikolmogorov/Flye)
+- [Canu](https://github.com/marbl/canu)
+- [Raven](https://github.com/lbcb-sci/raven)
+- [PenguiN](https://github.com/soedinglab/plass)
