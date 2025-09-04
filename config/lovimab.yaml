@@ -43,10 +43,9 @@ params:
   diamond_sensitivity: sensitive
 
 # --- Virus Selection ---
+# Add any viruses you want to specifically deep-dive on
 viruses_of_interest:
-  # Key: A clean name for the virus (used in filenames)
+  # Key: A species name for the virus
   # Value: Path to the reference FASTA for that virus
   Monkeypox_virus: "path/to/reference/genome"
   Influenza_A_virus: "path/to/reference/genome"
-  Human_alphaherpesvirus_1: "path/to/reference/genome"
-  # Add any other viruses you want to specifically deep-dive on
