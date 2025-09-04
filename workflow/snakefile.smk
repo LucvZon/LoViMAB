@@ -8,7 +8,7 @@ import os
 import glob
 
 # --- Load Configuration ---
-configfile: "lovimab.yaml"
+configfile: "config/lovimab.yaml"
 
 # --- Global Variables ---
 SAMPLES = list(config["samples"].keys())
