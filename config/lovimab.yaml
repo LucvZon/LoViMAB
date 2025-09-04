@@ -47,5 +47,5 @@ params:
 viruses_of_interest:
   # Key: A species name for the virus
   # Value: Path to the reference FASTA for that virus
-  Monkeypox_virus: "path/to/reference/genome"
-  Influenza_A_virus: "path/to/reference/genome"
+  Virus_name_1: "path/to/reference/genome"
+  Virus_name_2: "path/to/reference/genome"
