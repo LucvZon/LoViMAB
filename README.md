@@ -98,8 +98,8 @@ params:
 viruses_of_interest:
   # Key: A species name for the virus
   # Value: Path to the reference FASTA for that virus
-  Monkeypox_virus: "path/to/reference/genome"
-  Influenza_A_virus: "path/to/reference/genome"
+  Virus_name_1: "path/to/reference/genome"
+  Virus_name_2: "path/to/reference/genome"
 ```
 
 If your conda environment and config/lovibam.yml are ready, then run the workflow:
@@ -107,3 +107,61 @@ If your conda environment and config/lovibam.yml are ready, then run the workflo
 snakemake --snakefile workflow/snakefile.smk --cores 24
 ```
 Adjust --cores 24 if necessary. 
+
+# Workflow
+
+### 1. Read Preparation & QC
+- **Input**: Raw FASTQ files for a sample.
+- **Process**:
+	- -> Merge all raw reads.
+	- -> Trim adapters and low-quality ends ([cutadapt](https://github.com/marcelm/cutadapt)).
+	- -> Perform quality filtering ([fastplong](https://github.com/OpenGene/fastplong)).
+- **Output**: One cleaned FASTQ file per sample.
+
+### 2. Targeted Read Filtering
+- **Input**: The cleaned FASTQ file.
+- **Process**:
+	- -> Classify reads against a protein database (e.g., all viral proteins) using [DIAMOND](https://github.com/bbuchfink/diamond) BLASTX.
+	- -> Extract only the reads that hit the database.
+- **Output**: A smaller FASTQ file containing only the reads of interest ("target reads").
+
+### 3. Parallel Assembly
+- **Input**: The "target reads" FASTQ file.
+- **Process**: The same set of target reads is given to each active assembler, which run in parallel.
+```
++-- Branch A: metaFlye -> metaFlye Assembly
++-- Branch B: PenguiN  -> PenguiN Assembly
++-- Branch C: Raven    -> Raven Assembly
++-- Branch D: Canu     -> Canu Assembly
+```
+- **Output**: Multiple raw assembly files (one FASTA per assembler).
+
+### 4. Contig Annotation
+- **Input**: The raw assembly files from each assembler.
+- **Process**:
+	- -> Contigs from all assemblers are collected and annotated against the protein database (DIAMOND).
+	- -> A custom script post-processes the results to assign the best taxonomic lineage to each contig.
+- **Output**: An annotated table (TSV) for each assembly, linking contigs to potential viruses.
+
+### 5. Per-Assembler Evaluation
+- (These steps run independently for each assembler's output to assess its individual quality)
+- **Process**:
+	- -> General Stats: Calculate basic assembly metrics (N50, total length, etc.).
+	- -> Read Mapping: Map all high-quality reads back to the assembly to check coverage.
+	- -> Viral QC: Run CheckV to estimate viral genome completeness and check for contamination.
+- Output: Individual quality reports and statistics for each assembly.
+
+### 6. Targeted Comparative Analysis
+- (This final stage brings the results together for a direct comparison on specific viruses of interest)
+- **Process**:
+	- -> Binning: Based on the annotations, contigs are binned into separate FASTA files by virus species.
+	- -> Comparative QUAST: For each virus of interest (e.g., Monkeypox virus), the binned contigs from all assemblers are compared against the official reference genome.
+	- -> Contig Mapping: The binned contigs are also mapped to the reference genome to visualize alignment.
+- **Output**: A final, comparative QUAST report showing which assembler performed best for each targeted virus.
+
+# Databases
+
+LoViMAB requires a DIAMOND and CheckV database. Instructions on how to acquire/build these databases:
+
+- [https://bitbucket.org/berkeleylab/checkv](https://bitbucket.org/berkeleylab/checkv)
+- [https://github.com/bbuchfink/diamond/wiki](https://github.com/bbuchfink/diamond/wiki)
