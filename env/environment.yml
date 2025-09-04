@@ -20,3 +20,4 @@ dependencies:
   - mmseqs2
   - bioconda::cutadapt
   - conda-forge::rsync
+  - bioconda::seqtk
