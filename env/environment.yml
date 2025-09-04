@@ -4,7 +4,8 @@ channels:
   - bioconda
   - nodefaults
 dependencies:
-  - python==3.12.11
+  - python
+  - bioconda::diamond>=2.0.10 # Requires >=2.0.10 for '--fast' sensitivity
   - bioconda::fastplong
   - bioconda::minimap2
   - bioconda::samtools
@@ -17,7 +18,7 @@ dependencies:
   - bioconda::raven-assembler
   - bioconda::snakemake
   - bioconda::canu
-  - mmseqs2
+  - bioconda::mmseqs2
   - bioconda::cutadapt
   - conda-forge::rsync
   - bioconda::seqtk
