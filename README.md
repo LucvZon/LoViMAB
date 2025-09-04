@@ -29,6 +29,6 @@ conda env create -f env/environment.yml
 # Activate environment
 conda activate
 
-snakemake --snakefile workflow/snakefile.smk
+snakemake --snakefile workflow/snakefile.smk --cores 24
 ```
 
