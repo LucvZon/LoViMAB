@@ -32,7 +32,7 @@ conda env create -f env/environment.yml
 conda activate
 ```
 
-# Setup configuration
+## Setup configuration
 
 LoViMAB relies on `config/lovimab.yml` to find input fastq data, databases, references and more.
 
