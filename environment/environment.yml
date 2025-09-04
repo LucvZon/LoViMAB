@@ -1,0 +1,21 @@
+name: lovimab
+channels:
+  - conda-forge
+  - bioconda
+  - nodefaults
+dependencies:
+  - python==3.12.11
+  - bioconda::fastplong
+  - bioconda::minimap2
+  - bioconda::samtools
+  - bioconda::flye
+  - bioconda::plass
+  - bioconda::seqkit
+  - bioconda::quast
+  - bioconda::bbmap
+  - bioconda::checkv
+  - bioconda::raven-assembler
+  - bioconda::snakemake
+  - bioconda::canu
+  - mmseqs2
+  - bioconda::cutadapt
