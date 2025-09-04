@@ -10,15 +10,13 @@ samples:
   Sample1: "/path/to/input/reads"
   # Sample2: "path/to/input/reads"
  
-# --- External Database and Script Paths ---
+# --- External Databases ---
 # Fill in the absolute paths to your databases and scripts.
 paths:
   # Database for initial read classification
   diamond_db: "/path/to/diamond/database.dmnd"
   # Database for CheckV
   checkv_db: "/path/to/checkv/"
-  # Path to diamond post-processing script
-  post_process_script: "scripts/post_process_diamond_v1.0.py"
  
 # --- Assembler Selection ---
 # Set to 'true' to run an assembler, or 'false' to skip it.
