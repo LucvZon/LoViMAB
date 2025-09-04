@@ -140,16 +140,16 @@ rule trim_adapters:
     input:
         os.path.join(QC_DIR, "{sample}.merged.fastq")
     output:
-        fastq=os.path.join(QC_DIR, "{sample}.trimmed.fastq")
+        fastq=os.path.join(QC_DIR, "{sample}.trimmed.fastq"),
+        tmp_out=temp("cutadapt.tmp")
     params:
         threads=config["params"]["threads"]
     log:
         os.path.join(LOG_DIR, "trimming", "{sample}.log")
     shell:
         """
-        cutadapt -j {params.threads} -e 0.2 -n 5 -m 150 --revcomp -a GTTTCCCACTGGAGGATA...TATCCTCCAGTGGGAAAC {input} > cutadapt.tmp 2> {log}
-        cutadapt -j {params.threads} -u 9 -u -9 cutadapt.tmp > {output.fastq} 2>> {log}
-        rm cutadapt.tmp
+        cutadapt -j {params.threads} -e 0.2 -n 5 -m 150 --revcomp -a GTTTCCCACTGGAGGATA...TATCCTCCAGTGGGAAAC {input} > {output.tmp_out} 2> {log}
+        cutadapt -j {params.threads} -u 9 -u -9 {output.tmp_out} > {output.fastq} 2>> {log}
         """
 
 # Step 2: Perform quality control on merged reads
@@ -342,7 +342,7 @@ rule post_process_annotation:
         annotated=os.path.join(ANNOTATION_DIR, "{sample}", "post_processed", "{assembler}_annotated_contigs.tsv"),
         unannotated=os.path.join(ANNOTATION_DIR, "{sample}", "post_processed", "{assembler}_unannotated_contigs.tsv")
     params:
-        script=config["paths"]["post_process_script"]
+        script=workflow.source_path("../scripts/post_process_diamond_v1.0.py")
     log:
         os.path.join(LOG_DIR, "post_process", "{sample}_{assembler}.log")
     shell:
