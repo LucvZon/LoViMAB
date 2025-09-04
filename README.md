@@ -17,6 +17,8 @@ Current supported assemblers:
 
 # How to run
 
+Clone the repo and install the required conda environment:
+
 ```
 # Clone repo
 git clone https://github.com/LucvZon/LoViMAB.git
@@ -28,25 +30,24 @@ conda env create -f env/environment.yml
 
 # Activate environment
 conda activate
-
-snakemake --snakefile workflow/snakefile.smk --cores 24
 ```
 
 # Setup configuration
 
-LoViMAB relies on **config/lovimab.yml** to find input fastq data, databases, references and more.
+LoViMAB relies on `config/lovimab.yml` to find input fastq data, databases, references and more.
 
 Key sections to adjust:
 
-- **Sample Configuration**: Choose a sample name and supply a path to its corresponding fastq.gz files.
-- **External Database and Script Paths**: Set the diamond and checkv databases.
-- **Virus Selection**: Fill in a species name and its corresponding FASTA reference file.
+- `Sample Configuration`: Choose a sample name and supply a path to its corresponding fastq.gz files.
+- `External Database and Script Paths`: Set the diamond and checkv databases.
+- `Virus Selection`: Fill in a species name and its corresponding FASTA reference file.
 
 Optional sections:
 
-- **Assembler Selection**: Turn assemblers on/off.
-- **General Parameters**: Adjust number of threads and specific tool parameters
+- `Assembler Selection`: Turn assemblers on/off.
+- `General Parameters`: Adjust number of threads and specific tool parameters
 
+**config/lovimab.yml**:
 ```
 # -------------------------------------------------------------------
 #          CONFIGURATION FOR TARGETED ASSEMBLY WORKFLOW
@@ -100,3 +101,9 @@ viruses_of_interest:
   Monkeypox_virus: "path/to/reference/genome"
   Influenza_A_virus: "path/to/reference/genome"
 ```
+
+If your conda environment and config/lovibam.yml are ready, then run the workflow:
+```
+snakemake --snakefile workflow/snakefile.smk --cores 24
+```
+Adjust --cores 24 if necessary. 
