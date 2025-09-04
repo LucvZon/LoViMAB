@@ -39,7 +39,7 @@ LoViMAB relies on `config/lovimab.yml` to find input fastq data, databases, refe
 Key sections to adjust:
 
 - `Sample Configuration`: Choose a sample name and supply a path to its corresponding fastq.gz files.
-- `External Database and Script Paths`: Set the diamond and checkv databases.
+- `External Database`: Set the paths for the diamond and checkv databases.
 - `Virus Selection`: Fill in a species name and its corresponding FASTA reference file.
 
 Optional sections:
