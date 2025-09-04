@@ -14,3 +14,21 @@ Current supported assemblers:
 - [Canu](https://github.com/marbl/canu)
 - [Raven](https://github.com/lbcb-sci/raven)
 - [PenguiN](https://github.com/soedinglab/plass)
+
+# How to run
+
+```
+# Clone repo
+git clone https://github.com/LucvZon/LoViMAB.git
+
+cd LoViMAB
+
+# Install environment
+conda env create -f env/environment.yml
+
+# Activate environment
+conda activate
+
+snakemake --snakefile workflow/snakefile.smk
+```
+
