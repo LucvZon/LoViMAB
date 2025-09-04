@@ -1,0 +1,25 @@
+# The pipeline has been tested before with these exact versions.
+name: lovimab
+channels:
+  - conda-forge
+  - bioconda
+  - nodefaults
+dependencies:
+  - python==3.12.11
+  - bioconda::diamond==2.1.13
+  - bioconda::fastplong==0.3.0
+  - bioconda::minimap2==2.30
+  - bioconda::samtools==1.22.1
+  - bioconda::flye==2.9.6
+  - bioconda::plass==5.cf8933
+  - bioconda::seqkit==2.10.1
+  - bioconda::quast==5.3.0
+  - bioconda::bbmap==39.33
+  - bioconda::checkv==1.0.1
+  - bioconda::raven-assembler==1.8.3
+  - bioconda::snakemake==9.10.1
+  - bioconda::canu==2.3
+  - bioconda::mmseqs2==18.8cc5c
+  - bioconda::cutadapt==5.1
+  - conda-forge::rsync==3.4.1
+  - bioconda::seqtk==1.5
