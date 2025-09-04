@@ -1,7 +1,7 @@
 --- Version History ---
 
 v1.0.0:
-  Initial open-source release of LoViMAB. Features include:
+  Initial open-source release of LoViMAB. Workflow includes:
   1. Merge and decompress
   2. Quality control
   3. Pre-filter reads /w diamond blastx database
