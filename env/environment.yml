@@ -19,3 +19,4 @@ dependencies:
   - bioconda::canu
   - mmseqs2
   - bioconda::cutadapt
+  - conda-forge::rsync
