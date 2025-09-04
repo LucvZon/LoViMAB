@@ -141,7 +141,7 @@ rule trim_adapters:
         os.path.join(QC_DIR, "{sample}.merged.fastq")
     output:
         fastq=os.path.join(QC_DIR, "{sample}.trimmed.fastq"),
-        tmp_out=temp("cutadapt.tmp")
+        tmp_out=temp("{sample}.cutadapt.tmp")
     params:
         threads=config["params"]["threads"]
     log:
