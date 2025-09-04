@@ -18,7 +18,7 @@ paths:
   # Database for CheckV
   checkv_db: "/path/to/checkv/"
   # Path to diamond post-processing script
-  post_process_script: "/path/to/post_process_diamond_v1.0.py"
+  post_process_script: "scripts/post_process_diamond_v1.0.py"
  
 # --- Assembler Selection ---
 # Set to 'true' to run an assembler, or 'false' to skip it.
