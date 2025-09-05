@@ -58,8 +58,8 @@ Optional sections:
 # and the value is the path and prefix of the input fastq files.
 # The workflow will find all *.fastq.gz files in your path.
 samples:
-  Sample1: "/path/to/input/reads"
-  # Sample2: "path/to/input/reads"
+  Sample1: "/path/to/input/reads/"
+  # Sample2: "path/to/input/reads/"
  
 # --- External Database and Script Paths ---
 # Fill in the absolute paths to your databases and scripts.
@@ -125,15 +125,9 @@ Adjust --cores 24 if necessary.
 	- -> Extract only the reads that hit the database.
 - **Output**: A smaller FASTQ file containing only the reads of interest ("target reads").
 
-### 3. Parallel Assembly
+### 3. Denovo Assembly
 - **Input**: The "target reads" FASTQ file.
-- **Process**: The same set of target reads is given to each active assembler, which run in parallel.
-```
-+-- Branch A: metaFlye -> metaFlye Assembly
-+-- Branch B: PenguiN  -> PenguiN Assembly
-+-- Branch C: Raven    -> Raven Assembly
-+-- Branch D: Canu     -> Canu Assembly
-```
+- **Process**: The same set of target reads is given to each active assembler.
 - **Output**: Multiple raw assembly files (one FASTA per assembler).
 
 ### 4. Contig Annotation
