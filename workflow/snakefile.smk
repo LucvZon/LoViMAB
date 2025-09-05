@@ -142,14 +142,14 @@ rule trim_adapters:
     output:
         fastq=os.path.join(QC_DIR, "{sample}.trimmed.fastq"),
         tmp_out=temp("{sample}.cutadapt.tmp")
-    params:
-        threads=config["params"]["threads"]
+    threads:
+        config["params"]["threads"]
     log:
         os.path.join(LOG_DIR, "trimming", "{sample}.log")
     shell:
         """
-        cutadapt -j {params.threads} -e 0.2 -n 5 -m 150 --revcomp -a GTTTCCCACTGGAGGATA...TATCCTCCAGTGGGAAAC {input} > {output.tmp_out} 2> {log}
-        cutadapt -j {params.threads} -u 9 -u -9 {output.tmp_out} > {output.fastq} 2>> {log}
+        cutadapt -j {threads} -e 0.2 -n 5 -m 150 --revcomp -a GTTTCCCACTGGAGGATA...TATCCTCCAGTGGGAAAC {input} > {output.tmp_out} 2> {log}
+        cutadapt -j {threads} -u 9 -u -9 {output.tmp_out} > {output.fastq} 2>> {log}
         """
 
 # Step 2: Perform quality control on merged reads
@@ -160,14 +160,14 @@ rule quality_control:
         fastq=os.path.join(QC_DIR, "{sample}.qc.fastq"),
         json=os.path.join(QC_DIR, "{sample}.qc.json"),
         html=os.path.join(QC_DIR, "{sample}.qc.html")
-    params:
-        threads=config["params"]["threads"]
+    threads:
+        config["params"]["threads"]
     log:
         os.path.join(LOG_DIR, "quality_control", "{sample}.log")
     shell:
         "fastplong -i {input} -o {output.fastq} "
         "--length_required 150 --qualified_quality_phred 10 -j {output.json} -h {output.html} "
-        "--unqualified_percent_limit 50 --disable_adapter_trimming --thread {params.threads} &> {log}"
+        "--unqualified_percent_limit 50 --disable_adapter_trimming --thread {threads} &> {log}"
 
 # Step 3: Classify reads with DIAMOND against a custom database
 rule classify_reads_diamond:
@@ -177,15 +177,16 @@ rule classify_reads_diamond:
         os.path.join(READ_CLASSIFICATION_DIR, "{sample}.diamond_annotation.tsv")
     params:
         db=config["paths"]["diamond_db"],
-        threads=config["params"]["threads"],
         sensitivity_flag=f'--{config["params"]["diamond_sensitivity"]}'
+    threads:
+        config["params"]["threads"]
     log:
         os.path.join(LOG_DIR, "classify_reads_diamond", "{sample}.log")
     benchmark:
         os.path.join(BENCH_DIR, "classify_reads_diamond", "{sample}.log")
     shell:
         "diamond blastx {params.sensitivity_flag} -d {params.db} -q {input} -o {output} "
-        "-f 6 qseqid -k 1 --threads {params.threads} &> {log}" # Using -k 1 for best hit
+        "-f 6 qseqid -k 1 --threads {threads} &> {log}" # Using -k 1 for best hit
 
 # Step 4: Extract target reads based on DIAMOND classification
 rule extract_target_reads:
@@ -209,14 +210,14 @@ if ASSEMBLERS_CONFIG.get("metaflye", False):
         output:
             dir=directory(os.path.join(ASSEMBLY_DIR, "{sample}", "metaflye")),
             fasta=os.path.join(ASSEMBLY_DIR, "{sample}", "metaflye", "assembly.fasta")
-        params:
-            threads=config["params"]["threads"]
+        threads:
+            config["params"]["threads"]
         log:
             os.path.join(LOG_DIR, "assemble_metaflye", "{sample}.log")
         benchmark:
             os.path.join(BENCH_DIR, "assemble_metaflye", "{sample}.log")
         shell:
-            "flye --nano-raw {input} --meta -o {output.dir} --threads {params.threads} &> {log}"
+            "flye --nano-raw {input} --meta -o {output.dir} --threads {threads} &> {log}"
 
 if ASSEMBLERS_CONFIG.get("penguin", False):
     rule assemble_penguin:
@@ -227,8 +228,9 @@ if ASSEMBLERS_CONFIG.get("penguin", False):
             tmp_dir=directory(os.path.join(ASSEMBLY_DIR, "{sample}", "penguin", "temp_files"))
         params:
             min_len=config["params"]["penguin_min_contig_len"],
-            min_id=config["params"]["penguin_min_seq_id"],
-            threads=config["params"]["threads"]
+            min_id=config["params"]["penguin_min_seq_id"]
+        threads:
+            config["params"]["threads"]		
         log:
             os.path.join(LOG_DIR, "assemble_penguin", "{sample}.log")
         benchmark:
@@ -236,7 +238,7 @@ if ASSEMBLERS_CONFIG.get("penguin", False):
         shell:
             "penguin nuclassemble {input} {output.fasta} {output.tmp_dir} "
             "--min-contig-len {params.min_len} --min-seq-id {params.min_id} "
-            "--threads {params.threads} &> {log}"
+            "--threads {threads} &> {log}"
 
 if ASSEMBLERS_CONFIG.get("raven", False):
     rule assemble_raven:
@@ -244,15 +246,15 @@ if ASSEMBLERS_CONFIG.get("raven", False):
             os.path.join(READ_CLASSIFICATION_DIR, "{sample}.target_reads.fastq")
         output:
             os.path.join(ASSEMBLY_DIR, "{sample}", "raven", "assembly.fasta")
-        params:
-            threads=config["params"]["threads"]
+        threads:
+            config["params"]["threads"]
         log:
             os.path.join(LOG_DIR, "assemble_raven", "{sample}.log")
         benchmark:
             os.path.join(BENCH_DIR, "assemble_raven", "{sample}.log")
         shell:
             """
-            raven --threads {params.threads} -p 2 {input} > {output} 2> {log}
+            raven --threads {threads} -p 2 {input} > {output} 2> {log}
             rm raven.cereal
             """
 
@@ -313,14 +315,15 @@ rule annotate_aggregated_contigs:
     output:
         os.path.join(ANNOTATION_DIR, "{sample}", "aggregated_annotation.tsv")
     params:
-        db=config["paths"]["diamond_db"],
-        threads=config["params"]["threads"]
+        db=config["paths"]["diamond_db"]
+    threads:
+        config["params"]["threads"]
     log:
         os.path.join(LOG_DIR, "annotate_aggregated", "{sample}.log")
     shell:
         "diamond blastx -d {params.db} -q {input} -o {output} "
         "-f 6 qseqid sseqid pident length mismatch gapopen qstart qend sstart send evalue bitscore staxids "
-        "--threads {params.threads} -b 10 -c 1 &> {log}"
+        "--threads {threads} -b 10 -c 1 &> {log}"
 
 # Step 7: Split the aggregated annotation file back into per-assembler files
 rule split_annotations:
@@ -443,14 +446,14 @@ rule map_reads:
         reads=os.path.join(QC_DIR, "{sample}.qc.fastq")
     output:
         os.path.join(STATS_DIR, "reads_to_contigs", "{sample}_{assembler}.bam")
-    params:
-        threads=config["params"]["threads"]
+    threads:
+        config["params"]["threads"]
     log:
         os.path.join(LOG_DIR, "map_reads", "{sample}_{assembler}.log")
     shell:
-        "minimap2 -aY -t {params.threads} -x map-ont {input.contigs} {input.reads} 2> {log} | "
+        "minimap2 -aY -t {threads} -x map-ont {input.contigs} {input.reads} 2> {log} | "
         "samtools view -bF 4 - | "
-        "samtools sort -@ {params.threads} - > {output}"
+        "samtools sort -@ {threads} - > {output}"
 
 rule aggregate_contig_mappings:
     input:
@@ -465,16 +468,17 @@ rule map_binned_contigs_to_reference:
     output:
         bam=os.path.join(STATS_DIR, "contigs_to_ref", "{sample}", "{assembler}", "{virus}.bam")
     params:
-        threads=config["params"]["threads"],
         # The reference is looked up dynamically from the config using the {virus} wildcard.
         reference=lambda wildcards: config["viruses_of_interest"][wildcards.virus]
+    threads:
+        config["params"]["threads"]
     log:
         os.path.join(LOG_DIR, "map_binned_contigs", "{sample}_{assembler}_{virus}.log")
     shell:
         """
-        minimap2 -ax asm5 -t {params.threads} {params.reference} {input.binned_fasta} \
+        minimap2 -ax asm5 -t {threads} {params.reference} {input.binned_fasta} \
         2> {log} \
-        | samtools sort -@ {params.threads} -o {output.bam}
+        | samtools sort -@ {threads} -o {output.bam}
         """
 
 # Step 11: Run CheckV on each assembly
@@ -484,10 +488,11 @@ rule run_checkv:
     output:
         directory(os.path.join(STATS_DIR, "checkv", "{sample}_{assembler}"))
     params:
-        db=config["paths"]["checkv_db"],
-        threads=config["params"]["threads"]
+        db=config["paths"]["checkv_db"]
+    threads:
+        config["params"]["threads"]
     log:
         os.path.join(LOG_DIR, "run_checkv", "{sample}_{assembler}.log")
     shell:
-        "checkv end_to_end {input} {output} -d {params.db} -t {params.threads} &> {log}"
+        "checkv end_to_end {input} {output} -d {params.db} -t {threads} &> {log}"
 
