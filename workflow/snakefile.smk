@@ -140,16 +140,16 @@ rule trim_adapters:
     input:
         os.path.join(QC_DIR, "{sample}.merged.fastq")
     output:
-        fastq=os.path.join(QC_DIR, "{sample}.trimmed.fastq")
+        fastq=os.path.join(QC_DIR, "{sample}.trimmed.fastq"),
+        tmp_out=temp("{sample}.cutadapt.tmp")
     threads:
         config["params"]["threads"]
     log:
         os.path.join(LOG_DIR, "trimming", "{sample}.log")
     shell:
         """
-        cutadapt -j {threads} -e 0.2 -n 5 -m 150 --revcomp \
-            -a GTTTCCCACTGGAGGATA...TATCCTCCAGTGGGAAAC {input} \
-        | cutadapt -j {threads} -u 9 -u -9 - > {output.fastq} 2> {log}
+        cutadapt -j {threads} -e 0.2 -n 5 -m 150 --revcomp -a GTTTCCCACTGGAGGATA...TATCCTCCAGTGGGAAAC {input} > {output.tmp_out} 2> {log}
+        cutadapt -j {threads} -u 9 -u -9 {output.tmp_out} > {output.fastq} 2>> {log}
         """
 
 # Step 2: Perform quality control on merged reads
