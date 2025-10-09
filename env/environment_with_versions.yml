@@ -24,4 +24,5 @@ dependencies:
   - conda-forge::rsync==3.4.1
   - bioconda::seqtk==1.5
   - conda-forge::quarto==1.7.33
+  - conda-forge::r-quarto==1.5.1
   - conda-forge::r-knitr==1.50
