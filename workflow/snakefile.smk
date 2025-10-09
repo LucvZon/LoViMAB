@@ -57,7 +57,8 @@ rule all:
         expand(os.path.join(ANNOTATION_DIR, "{sample}", "post_processed", "{assembler}_annotated_contigs.tsv"), sample=SAMPLES, assembler=ACTIVE_ASSEMBLERS),
         # --- Specific, Targeted Reports ---
         os.path.join(STATS_DIR, "all_targeted_comparisons.done"),
-        os.path.join(STATS_DIR, "all_contig_mappings.done")
+        os.path.join(STATS_DIR, "all_contig_mappings.done"),
+        os.path.join(RESULTS_DIR, "report", "summary_report.html")
 
 
 # ===================================================================
@@ -402,7 +403,8 @@ rule targeted_quast_comparison:
         )
     output:
         report=os.path.join(STATS_DIR, "targeted_quast", "{sample}", "{virus}", "report.html"),
-        out_dir=directory(os.path.join(STATS_DIR, "targeted_quast", "{sample}", "{virus}"))
+        out_dir=directory(os.path.join(STATS_DIR, "targeted_quast", "{sample}", "{virus}")),
+        transposed=os.path.join(STATS_DIR, "targeted_quast", "{sample}", "{virus}", "transposed_report.tsv")
     params:
         reference=lambda wildcards: config["viruses_of_interest"][wildcards.virus],
     log:
@@ -425,7 +427,7 @@ rule targeted_quast_comparison:
         else:
             # This logic should not be reached if the aggregator works correctly,
             # but it is kept for safety.
-            shell("mkdir -p {output.out_dir} && touch {output.report}")
+            shell("mkdir -p {output.out_dir} && touch {output.report} && touch {output.transposed}")
 
 
 # Step 9: Calculate assembly statistics
@@ -452,7 +454,7 @@ rule map_reads:
         os.path.join(LOG_DIR, "map_reads", "{sample}_{assembler}.log")
     shell:
         "minimap2 -aY -t {threads} -x map-ont {input.contigs} {input.reads} 2> {log} | "
-        "samtools view -bF 4 - | "
+        "samtools view -b - | "
         "samtools sort -@ {threads} - > {output}"
 
 rule aggregate_contig_mappings:
@@ -496,3 +498,45 @@ rule run_checkv:
     shell:
         "checkv end_to_end {input} {output} -d {params.db} -t {threads} &> {log}"
 
+
+# SUMMARY REPORT
+rule summarize_benchmarks:
+    input:
+        benchmarks=expand("benchmarks/{process}/{sample}.log", process=["classify_reads_diamond"] + [f"assemble_{asm}" for asm in ACTIVE_ASSEMBLERS], sample=SAMPLES),
+        quast_reports=expand(os.path.join(STATS_DIR, "targeted_quast", "{sample}", "{virus}", "transposed_report.tsv"), sample=SAMPLES, virus=config["viruses_of_interest"].keys()),
+        bams=expand(os.path.join(STATS_DIR, "reads_to_contigs", "{sample}_{assembler}.bam"), sample=SAMPLES, assembler=ACTIVE_ASSEMBLERS)
+    output:
+        benchmark_csv=os.path.join(RESULTS_DIR, "report", "benchmark_summary.csv"),
+        assembly_csv=os.path.join(RESULTS_DIR, "report", "assembly_summary.csv")
+    params:
+        script="scripts/summarize_benchmarks.py"
+    log:
+        os.path.join(LOG_DIR, "summarize_benchmarks.log")
+    run:
+        # EXECUTE THE SCRIPT FROM THE PROJECT ROOT
+        # This makes all the paths passed as arguments (input.benchmarks, input.quast_reports, input.bams)
+        # valid relative paths for the script, as Snakemake generates them relative to the root.
+        all_inputs = " ".join(input.benchmarks + input.quast_reports + input.bams)
+        
+        shell(
+            "python {params.script} {all_inputs} > {log} 2>&1"
+        )
+        
+        # Then, move the output CSVs from the root to their final destination
+        shell("mv benchmark_summary.csv {output.benchmark_csv}")
+        shell("mv assembly_summary.csv {output.assembly_csv}")
+
+rule generate_report:
+    input:
+        benchmark_csv=os.path.join(RESULTS_DIR, "report", "benchmark_summary.csv"),
+        assembly_csv=os.path.join(RESULTS_DIR, "report", "assembly_summary.csv"),
+        qmd_template="templates/summary_template.qmd"
+    output:
+        os.path.join(RESULTS_DIR, "report", "summary_report.html")
+    params:
+        work_dir=os.path.join(RESULTS_DIR, "report")
+    run:
+        shell("cp {input.qmd_template} {params.work_dir}/summary.qmd")
+        shell("cd {params.work_dir} && quarto render summary.qmd --to html")
+        # Rename the output to match what Snakemake expects.
+        shell("mv {params.work_dir}/summary.html {output}")
