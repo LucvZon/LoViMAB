@@ -10,6 +10,24 @@ import glob
 # --- Load Configuration ---
 configfile: "config/lovimab.yaml"
 
+# --- Onstart: Validate Configuration ---
+onstart:
+    # Check if every reference genome listed in 'viruses_of_interest' exists.
+    for virus_name, ref_path in config["viruses_of_interest"].items():
+        if not os.path.exists(ref_path):
+            raise WorkflowError(
+                f"Configuration Error: The reference genome path for virus '{virus_name}' "
+                f"does not exist. Please check the path in your config file.\n"
+                f"  -> Path provided: {ref_path}"
+            )
+    for database, db_path in config["paths"].items():
+        if not os.path.exists(db_path):
+            raise WorkflowError(
+                f"Configuration Error: The following database '{db_path}' "
+                f"does not exist. Please check the path in your config file.\n"
+                f"  -> Path provided: {db_path}"
+            )
+
 # --- Global Variables ---
 SAMPLES = list(config["samples"].keys())
 ASSEMBLERS_CONFIG = config["assemblers"]
