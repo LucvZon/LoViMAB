@@ -29,7 +29,7 @@ cd LoViMAB
 conda env create -f env/environment.yml
 
 # Activate environment
-conda activate
+conda activate lovimab
 ```
 
 ## Setup configuration
