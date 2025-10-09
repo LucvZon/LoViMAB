@@ -12,7 +12,7 @@ configfile: "config/lovimab.yaml"
 
 # --- Onstart: Validate Configuration ---
 onstart:
-    # Check if every reference genome listed in 'viruses_of_interest' exists.
+    # Check if every file path listed in configfile exists.
     for virus_name, ref_path in config["viruses_of_interest"].items():
         if not os.path.exists(ref_path):
             raise WorkflowError(
