@@ -1,0 +1,41 @@
+---
+title: "Sample: {sample_name}"
+---
+
+## Read Filtering
+
+After quality control, a total of **{total_read_count}** reads remained.
+
+Following classification against the human virus database, **{target_read_count}** reads were selected for assembly.
+
+This represents **{reads_leftover_pct}%** of the quality-controlled reads.
+
+## Contig Quality (CheckV)
+
+The following tables summarize the quality of viral contigs produced by each assembler, as determined by CheckV.
+
+### CheckV Quality Categories
+
+```{{r}}
+#| label: tbl-checkv-quality
+#| tbl-cap: "Counts of contigs per CheckV-defined quality category."
+#| echo: false
+
+# Construct the filename for this specific sample's summary
+csv_path <- paste0("{sample_name}", "_checkv_summary.csv")
+checkv_data <- read.csv(csv_path, check.names = FALSE)
+knitr::kable(checkv_data, format = "html")
+```
+
+### MIUViG Quality Categories
+
+```{{r}}
+#| label: tbl-miuvig-quality
+#| tbl-cap: "Counts of contigs per MIUViG-defined quality category."
+#| echo: false
+
+# Construct the filename for this specific sample's summary
+csv_path <- paste0("{sample_name}", "_miuvig_summary.csv")
+miuvig_data <- read.csv(csv_path, check.names = FALSE)
+knitr::kable(miuvig_data, format = "html")
+```
