@@ -76,7 +76,7 @@ rule all:
         # --- Specific, Targeted Reports ---
         os.path.join(STATS_DIR, "all_targeted_comparisons.done"),
         os.path.join(STATS_DIR, "all_contig_mappings.done"),
-        os.path.join(RESULTS_DIR, "report", "summary_report.html")
+        os.path.join(RESULTS_DIR, "report", "final_summary_report", "index.html")
 
 
 # ===================================================================
@@ -219,6 +219,26 @@ rule extract_target_reads:
     shell:
         "awk '{{print $1}}' {input.ids} | sort -u > {output}.ids.txt 2> {log}; "
         "seqtk subseq {input.reads} {output}.ids.txt > {output} 2>> {log}"
+		
+# Step 4b: Calculate the percentage of reads kept after classification
+rule calculate_reads_leftover:
+    input:
+        total_reads_file=os.path.join(QC_DIR, "{sample}.qc.fastq"),
+        target_reads_file=os.path.join(READ_CLASSIFICATION_DIR, "{sample}.target_reads.fastq")
+    output:
+        os.path.join(STATS_DIR, "passed_reads", "{sample}_reads_leftover_pct.txt")
+    log:
+        os.path.join(LOG_DIR, "calculate_reads_leftover", "{sample}.log")
+    shell:
+        """
+        # Count lines in each file and divide by 4 to get the number of reads
+        total_reads=$( (wc -l < {input.total_reads_file} || true) | awk '{{print $1 / 4}}' )
+        target_reads=$( (wc -l < {input.target_reads_file} || true) | awk '{{print $1 / 4}}' )
+
+        # Use awk for safe floating-point arithmetic, even if counts are zero
+        awk -v target="$target_reads" -v total="$total_reads" \
+        'BEGIN {{ if (total > 0) {{ printf "%.2f", (target / total) * 100 }} else {{ print "0.00" }} }}' > {output} 2> {log}
+        """
 
 # --- ASSEMBLY RULES ---
 
@@ -516,6 +536,21 @@ rule run_checkv:
     shell:
         "checkv end_to_end {input} {output} -d {params.db} -t {threads} &> {log}"
 
+rule summarize_sample_checkv:
+    input:
+        lambda wildcards: expand(
+            os.path.join(STATS_DIR, "checkv", f"{wildcards.sample}_{{assembler}}", "quality_summary.tsv"),
+            assembler=ACTIVE_ASSEMBLERS
+        )
+    output:
+        checkv_csv=os.path.join(STATS_DIR, "per_sample", "{sample}_checkv_summary.csv"),
+        miuvig_csv=os.path.join(STATS_DIR, "per_sample", "{sample}_miuvig_summary.csv")
+    params:
+        script="scripts/summarize_checkv.py"
+    log:
+        os.path.join(LOG_DIR, "summarize_checkv", "{sample}.log")
+    shell:
+        "python {params.script} {output.checkv_csv} {output.miuvig_csv} {input} > {log} 2>&1"
 
 # SUMMARY REPORT
 rule summarize_benchmarks:
@@ -531,30 +566,115 @@ rule summarize_benchmarks:
     log:
         os.path.join(LOG_DIR, "summarize_benchmarks.log")
     run:
-        # EXECUTE THE SCRIPT FROM THE PROJECT ROOT
-        # This makes all the paths passed as arguments (input.benchmarks, input.quast_reports, input.bams)
-        # valid relative paths for the script, as Snakemake generates them relative to the root.
         all_inputs = " ".join(input.benchmarks + input.quast_reports + input.bams)
         
         shell(
             "python {params.script} {all_inputs} > {log} 2>&1"
         )
         
-        # Then, move the output CSVs from the root to their final destination
         shell("mv benchmark_summary.csv {output.benchmark_csv}")
         shell("mv assembly_summary.csv {output.assembly_csv}")
 
-rule generate_report:
+
+rule generate_quarto_report:
     input:
         benchmark_csv=os.path.join(RESULTS_DIR, "report", "benchmark_summary.csv"),
         assembly_csv=os.path.join(RESULTS_DIR, "report", "assembly_summary.csv"),
-        qmd_template="templates/summary_template.qmd"
+        leftover_pcts=expand(os.path.join(STATS_DIR, "per_sample", "{sample}_reads_leftover_pct.txt"), sample=SAMPLES),
+        qc_reads=expand(os.path.join(QC_DIR, "{sample}.qc.fastq"), sample=SAMPLES),
+        target_reads=expand(os.path.join(READ_CLASSIFICATION_DIR, "{sample}.target_reads.fastq"), sample=SAMPLES),
+        checkv_summaries=expand(os.path.join(STATS_DIR, "per_sample", "{sample}_checkv_summary.csv"), sample=SAMPLES),
+        miuvig_summaries=expand(os.path.join(STATS_DIR, "per_sample", "{sample}_miuvig_summary.csv"), sample=SAMPLES)
     output:
-        os.path.join(RESULTS_DIR, "report", "summary_report.html")
+        os.path.join(RESULTS_DIR, "report", "final_summary_report", "index.html")
     params:
-        work_dir=os.path.join(RESULTS_DIR, "report")
+        temp_quarto_src=os.path.join(RESULTS_DIR, "report", "quarto_book_src")
+    log:
+        os.path.join(LOG_DIR, "generate_quarto_report.log")
     run:
-        shell("cp {input.qmd_template} {params.work_dir}/summary.qmd")
-        shell("cd {params.work_dir} && quarto render summary.qmd --to html")
-        # Rename the output to match what Snakemake expects.
-        shell("mv {params.work_dir}/summary.html {output}")
+        # --- PART 1: PREPARATION ---
+        # 1. Start with a clean slate for the temporary source directory.
+        shell("rm -rf {params.temp_quarto_src}")
+        shell("mkdir -p {params.temp_quarto_src}")
+        
+        # 2. Copy all necessary data files into the book's source directory.
+        shell("cp {input.benchmark_csv} {params.temp_quarto_src}/")
+        shell("cp {input.assembly_csv} {params.temp_quarto_src}/")
+        
+        for f in input.checkv_summaries:
+            shell(f"cp {f} {params.temp_quarto_src}/")
+        for f in input.miuvig_summaries:
+            shell(f"cp {f} {params.temp_quarto_src}/")
+
+        # 3. Copy the main index template.
+        shell("cp templates/index.qmd {params.temp_quarto_src}/")
+        shell("cp templates/index.qmd {params.temp_quarto_src}/")
+
+        # 4. Build the chapter list and create each sample-specific chapter file.
+        chapter_files = ["index.qmd"] + [f"sample_{s}.qmd" for s in SAMPLES]
+        for i, sample in enumerate(SAMPLES):
+            chapter_filename = f"sample_{sample}.qmd"
+            
+            pct_file = input.leftover_pcts[i]
+            qc_reads_file = input.qc_reads[i]
+            target_reads_file = input.target_reads[i]
+
+            with open(pct_file, 'r') as f:
+                reads_leftover_pct = f.read().strip()
+            
+            total_read_count = int(shell(f"wc -l < {qc_reads_file}", read=True).strip()) // 4
+            target_read_count = int(shell(f"wc -l < {target_reads_file}", read=True).strip()) // 4
+            
+            with open("templates/sample_chapter_template.qmd", 'r') as f:
+                template_content = f.read()
+            
+
+            chapter_content = template_content.format(
+                sample_name=sample,
+                total_read_count=f"{total_read_count:,}",
+                target_read_count=f"{target_read_count:,}",
+                reads_leftover_pct=reads_leftover_pct,
+                checkv_csv_filename=os.path.basename(input.checkv_summaries[i]),
+                miuvig_csv_filename=os.path.basename(input.miuvig_summaries[i])
+            )
+            
+            with open(os.path.join(params.temp_quarto_src, chapter_filename), 'w') as f:
+                f.write(chapter_content)
+        
+# 5. Generate the _quarto.yml file from scratch.
+        yaml_content = f"""
+project:
+  type: book
+  output-dir: _book
+
+# Book-specific configuration
+book:
+  title: "LoViMAB Workflow Summary"
+  chapters:
+"""
+        for chapter in chapter_files:
+            yaml_content += f"    - {chapter}\n"
+
+        # Add the global format and engine settings
+        yaml_content += """
+# Global format settings for the HTML output
+format:
+  html:
+    theme: cosmo
+    toc: true
+    embed-resources: true
+
+# Tell Quarto to use the Knitr engine to execute R code chunks
+engine: knitr
+"""
+        with open(os.path.join(params.temp_quarto_src, "_quarto.yml"), 'w') as f:
+            f.write(yaml_content)
+
+        # --- PART 2: RENDERING ---
+        shell("quarto render {params.temp_quarto_src} --to html &> {log}")
+
+        # --- PART 3: FINALIZATION ---
+        final_output_dir = os.path.dirname(output[0])
+        shell("mkdir -p {final_output_dir}")
+        shell("mv {params.temp_quarto_src}/_book/* {final_output_dir}/")
+        shell("rm -r {params.temp_quarto_src}")
