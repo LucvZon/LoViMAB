@@ -7,7 +7,7 @@ import subprocess
 
 def process_benchmark_log(filepath_str):
     """Parses a single Snakemake benchmark log file."""
-    filepath = Path(filepath_str) # Convert string to Path object
+    filepath = Path(filepath_str)
     COLUMNS_TO_PARSE = {'s': float, 'max_rss': float, 'mean_load': float}
     try:
         df = pd.read_csv(
@@ -20,52 +20,66 @@ def process_benchmark_log(filepath_str):
         )
         if not df.empty:
             stats = df.iloc[0].to_dict()
-            # The process name is derived from the *relative* path that Snakemake knows.
-            # We assume the path looks like 'benchmarks/rule_name/sample.log'
             stats['process'] = filepath.parent.name
             return stats
     except Exception as e:
         print(f"Warning: Could not parse benchmark file {filepath}. Error: {e}", file=sys.stderr)
     return None
 
-def process_quast_report(filepath_str):
-    """Parses a single QUAST transposed_report.tsv file."""
+def process_stats_file(filepath_str):
+    """Parses a single stats.sh output file."""
     filepath = Path(filepath_str)
     try:
+        # Read the tab-separated file
         df = pd.read_csv(filepath, sep='\t', header=0)
-        df = df.rename(columns={'Assembly': 'process'})
-        # Ensure only relevant columns are selected and return as list of dicts
-        return df[['process', '# contigs', 'Largest contig', 'Total length']].to_dict('records')
+        
+        # 1. Get the stem: "Sample1_metaflye.stats"
+        # 2. Remove the unwanted ".stats" suffix
+        # 3. Then, get the assembler name
+        clean_stem = filepath.stem.removesuffix('.stats') # This is a Python 3.9+ feature
+        assembler_name = clean_stem.split('_')[-1]
+        
+        # Get the first (and only) row of data
+        stats = df.iloc[0].to_dict()
+        
+        # Return a dictionary with the process name and relevant stats
+        return {
+            'process': assembler_name,
+            '# Contigs': stats['n_contigs'],
+            'Total Length (bp)': stats['contig_bp'],
+            'Largest Contig (bp)': stats['ctg_max']
+        }
     except Exception as e:
-        print(f"Warning: Could not parse QUAST report {filepath}. Error: {e}", file=sys.stderr)
-    return []
+        print(f"Warning: Could not parse stats file {filepath}. Error: {e}", file=sys.stderr)
+    return None
 
 def process_bam_file(filepath_str):
     """Gets total and mapped read counts from a BAM file using samtools."""
     filepath = Path(filepath_str)
     try:
+        # Filename format is now "{sample}_{assembler}.bam", so this logic is slightly simpler
         assembler = filepath.stem.split('_')[-1]
         total_cmd = f"samtools view -c {filepath}"
         mapped_cmd = f"samtools view -c -F 4 {filepath}" # -F 4 means "not unmapped"
         
-        # Use shell=True for simpler command execution, but ensure subprocess security if input is untrusted.
-        # Here, paths are from trusted Snakemake, so it's fine.
         total_reads = int(subprocess.check_output(total_cmd, shell=True).strip())
         mapped_reads = int(subprocess.check_output(mapped_cmd, shell=True).strip())
+        
         return {'process': assembler, 'total_reads': total_reads, 'mapped_reads': mapped_reads}
     except Exception as e:
         print(f"Warning: Could not process BAM file {filepath}. Error: {e}", file=sys.stderr)
     return None
 
 def main(all_files):
-    benchmark_data, quast_data_list, bam_data = [], [], []
+    benchmark_data, stats_data, bam_data = [], [], []
 
     for f in all_files:
         if 'benchmarks' in f and f.endswith('.log'):
             res = process_benchmark_log(f)
             if res: benchmark_data.append(res)
-        elif 'transposed_report.tsv' in f:
-            quast_data_list.extend(process_quast_report(f))
+        elif f.endswith('.stats.txt'):
+            res = process_stats_file(f)
+            if res: stats_data.append(res)
         elif f.endswith('.bam'):
             res = process_bam_file(f)
             if res: bam_data.append(res)
@@ -84,27 +98,30 @@ def main(all_files):
     benchmark_summary.to_csv("benchmark_summary.csv", index=False)
 
     # --- Process Assembly Outcomes ---
-    if quast_data_list:
-        quast_df = pd.DataFrame(quast_data_list)
-        assembly_summary = quast_df.groupby('process').mean().reset_index() # Average across samples/viruses
+    if stats_data:
+        stats_df = pd.DataFrame(stats_data)
+        # Average the stats across all samples for each assembler
+        assembly_summary = stats_df.groupby('process').mean().reset_index()
         
+        # Merge the read mapping statistics.
         if bam_data:
             bam_df = pd.DataFrame(bam_data)
+            # For reads, we want the SUM across all samples, not the mean.
             bam_summary = bam_df.groupby('process').sum(numeric_only=True).reset_index()
-            bam_summary['Reads Mapped (%)'] = (bam_summary['mapped_reads'] / bam_summary['total_reads'] * 100).round(2)
+            bam_summary['Reads Mapped (%)'] = ((bam_summary['mapped_reads'] / bam_summary['total_reads']) * 100).round(2)
+            
             assembly_summary = pd.merge(assembly_summary, bam_summary[['process', 'Reads Mapped (%)']], on='process', how='left')
         else:
-            assembly_summary['Reads Mapped (%)'] = None # Or 0, depending on desired empty state
+            assembly_summary['Reads Mapped (%)'] = 0.0 # Or None
     else:
+        # Create an empty dataframe if no stats files were found
         assembly_summary = pd.DataFrame(columns=['process', '# Contigs', 'Largest Contig (bp)', 'Total Length (bp)', 'Reads Mapped (%)'])
-
-    assembly_summary = assembly_summary.rename(columns={'# contigs': '# Contigs', 'Largest contig': 'Largest Contig (bp)', 'Total length': 'Total Length (bp)'})
     
-    # Ensure all expected columns are present, even if no data, for consistent CSV output
+    # Ensure all expected columns are present for consistent output
     final_cols = ['process', '# Contigs', 'Largest Contig (bp)', 'Total Length (bp)', 'Reads Mapped (%)']
     for col in final_cols:
         if col not in assembly_summary.columns:
-            assembly_summary[col] = None # or 0, depending on what's desired for empty cells
+            assembly_summary[col] = 0.0 # or None
     
     assembly_summary.to_csv("assembly_summary.csv", index=False)
 
