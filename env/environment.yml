@@ -25,3 +25,5 @@ dependencies:
   - conda-forge::quarto
   - conda-forge::r-quarto
   - conda-forge::r-knitr
+  - conda-forge::r-dplyr
+  - conda-forge::r-readr
