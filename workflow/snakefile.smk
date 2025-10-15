@@ -477,7 +477,7 @@ rule calculate_stats:
     log:
         os.path.join(LOG_DIR, "calculate_stats", "{sample}_{assembler}.log")
     shell:
-        "stats.sh {input} > {output} 2> {log}"
+        "stats.sh {input} format=5 > {output} 2> {log}"
 
 # Step 10: Map all QC'd reads back to each assembly
 rule map_reads:
@@ -556,7 +556,7 @@ rule summarize_sample_checkv:
 rule summarize_benchmarks:
     input:
         benchmarks=expand("benchmarks/{process}/{sample}.log", process=["classify_reads_diamond"] + [f"assemble_{asm}" for asm in ACTIVE_ASSEMBLERS], sample=SAMPLES),
-        quast_reports=expand(os.path.join(STATS_DIR, "targeted_quast", "{sample}", "{virus}", "transposed_report.tsv"), sample=SAMPLES, virus=config["viruses_of_interest"].keys()),
+        assembly_stats=expand(os.path.join(STATS_DIR, "contig_stats", "{sample}_{assembler}.stats.txt"), sample=SAMPLES, assembler=ACTIVE_ASSEMBLERS),
         bams=expand(os.path.join(STATS_DIR, "reads_to_contigs", "{sample}_{assembler}.bam"), sample=SAMPLES, assembler=ACTIVE_ASSEMBLERS)
     output:
         benchmark_csv=os.path.join(RESULTS_DIR, "report", "benchmark_summary.csv"),
@@ -566,7 +566,7 @@ rule summarize_benchmarks:
     log:
         os.path.join(LOG_DIR, "summarize_benchmarks.log")
     run:
-        all_inputs = " ".join(input.benchmarks + input.quast_reports + input.bams)
+        all_inputs = " ".join(input.benchmarks + input.assembly_stats + input.bams)
         
         shell(
             "python {params.script} {all_inputs} > {log} 2>&1"
@@ -574,7 +574,6 @@ rule summarize_benchmarks:
         
         shell("mv benchmark_summary.csv {output.benchmark_csv}")
         shell("mv assembly_summary.csv {output.assembly_csv}")
-
 
 rule generate_quarto_report:
     input:
@@ -628,7 +627,6 @@ rule generate_quarto_report:
             with open("templates/sample_chapter_template.qmd", 'r') as f:
                 template_content = f.read()
             
-
             chapter_content = template_content.format(
                 sample_name=sample,
                 total_read_count=f"{total_read_count:,}",
