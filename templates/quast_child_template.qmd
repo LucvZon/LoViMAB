@@ -1,0 +1,49 @@
+### vs. {virus_display_name}
+
+```{{r}}
+#| label: tbl-quast-{unique_id}
+#| tbl-cap: "QUAST metrics for assemblies compared against the {virus_display_name} reference."
+#| echo: false
+#| warning: false
+#| message: false
+
+library(dplyr)
+library(readr)
+library(knitr)
+
+# The filename is injected by Python during the Snakemake run
+quast_report_file <- "{report_filename}"
+
+# Define the specific rows we want to display, in order
+row_order <- c(
+  "Genome fraction (%)", "Duplication ratio", "Largest alignment", "NGA50", "LGA50",
+  "# misassemblies", "Misassembled contigs length", "# mismatches per 100 kbp",
+  "# indels per 100 kbp", "# contigs", "Largest contig", "Total length",
+  "Total length (>= 1000 bp)", "Total length (>= 10000 bp)", "Total length (>= 50000 bp)"
+)
+
+# Read and process the data
+# Use tryCatch to handle cases where the file might be empty or malformed
+tryCatch({{
+  quast_result <- read_tsv(quast_report_file, show_col_types = FALSE)
+
+  # Robustly select only columns that are present in the data
+  expected_assemblers <- c("canu", "metaflye", "penguin", "raven")
+  present_assemblers <- intersect(colnames(quast_result), expected_assemblers)
+
+  if (length(present_assemblers) > 0) {{
+    quast_table <- quast_result %>%
+      filter(Assembly %in% row_order) %>%
+      # Ensure columns are numeric before rounding
+      mutate(across(all_of(present_assemblers), ~ as.numeric(as.character(.)))) %>%
+      mutate(across(all_of(present_assemblers), ~ round(., 1))) %>%
+      arrange(factor(Assembly, levels = row_order))
+
+    kable(quast_table, format = "html")
+  }} else {{
+    cat("No assembler columns found in report.")
+  }}
+}}, error = function(e) {{
+  cat("Error reading QUAST report: ", e$message)
+}})
+```
