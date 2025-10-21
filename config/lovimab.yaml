@@ -25,17 +25,46 @@ assemblers:
   penguin: true
   raven: true
   canu: true
+  myloasm: true
+  metamdbg: true
+  wtdbg2: true
+  shasta: true
+  miniasm: true
   # Add other assemblers if needed
  
 # --- General Parameters ---
 params:
   threads: 24
-  # Minimum contig length for PenguiN
+
+  # --- PENGUIN ---
+  # Minimum contig length
   penguin_min_contig_len: 500
-  # Minimum sequence identity for PenguiN overlaps
+  # Minimum sequence identity for overlaps
   penguin_min_seq_id: 0.95
+
+  # --- CANU ---
   # Set genome size for canu
   canu_genome_size: 200k
+
+  # --- MYLOASM ---
+  myloasm_min_reads: 10
+  myloasm_min_overlap: 250
+
+  # --- METAMDBG ---
+  metamdbg_min_overlap: 250
+  metamdbg_min_seq_id: 0.95
+
+  # --- WTDBG2 ---
+  wtdbg2_min_read_len: 500
+  wtdbg2_min_contig_len: 1000
+
+  # --- SHASTA ---
+  shasta_min_read_len: 500
+
+  # --- MINIASM ---
+  miniasm_min_overlap: 400
+
+  # --- DIAMOND ---
   # Set DIAMOND BLASTX sensitivity for read filtering
   # options: fast, mid-sensitive, sensitive, more-sensitive, very-sensitive, ultra-sensitive
   diamond_sensitivity: sensitive
