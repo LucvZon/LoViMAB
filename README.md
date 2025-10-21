@@ -58,8 +58,8 @@ Optional sections:
 # and the value is the path and prefix of the input fastq files.
 # The workflow will find all *.fastq.gz files in your path.
 samples:
-  Sample1: "/path/to/input/reads"
-  # Sample2: "path/to/input/reads"
+  Sample1: "/path/to/input/reads/"
+  # Sample2: "path/to/input/reads/"
  
 # --- External Databases ---
 # Fill in the absolute paths to your databases and scripts.
