@@ -161,7 +161,7 @@ if ASSEMBLERS_CONFIG.get("wtdbg2", False):
             mkdir -p {output.dir}
 
             wtdbg2 \
-            -i results/2_read_classification/Sample1.target_reads.fastq \
+            -i {input} \
             -o {output.dir}/dbg \
             -t {threads} \
             -x ont \
