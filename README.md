@@ -14,6 +14,11 @@ Current supported assemblers:
 - [Canu](https://github.com/marbl/canu)
 - [Raven](https://github.com/lbcb-sci/raven)
 - [PenguiN](https://github.com/soedinglab/plass)
+- [Myloasm](https://github.com/bluenote-1577/myloasm)
+- [MetaMDBG](https://github.com/GaetanBenoitDev/metaMDBG)
+- [wtdbg2 / Redbean](https://github.com/ruanjue/wtdbg2)
+- [Shasta](https://github.com/paoloshasta/shasta)
+- [Miniasm](https://github.com/lh3/miniasm)
 
 # How to run
 
