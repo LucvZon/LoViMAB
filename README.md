@@ -58,18 +58,16 @@ Optional sections:
 # and the value is the path and prefix of the input fastq files.
 # The workflow will find all *.fastq.gz files in your path.
 samples:
-  Sample1: "/path/to/input/reads/"
-  # Sample2: "path/to/input/reads/"
+  Sample1: "/path/to/input/reads"
+  # Sample2: "path/to/input/reads"
  
-# --- External Database and Script Paths ---
+# --- External Databases ---
 # Fill in the absolute paths to your databases and scripts.
 paths:
   # Database for initial read classification
   diamond_db: "/path/to/diamond/database.dmnd"
   # Database for CheckV
   checkv_db: "/path/to/checkv/"
-  # Path to diamond post-processing script
-  post_process_script: "/path/to/post_process_diamond_v1.0.py"
  
 # --- Assembler Selection ---
 # Set to 'true' to run an assembler, or 'false' to skip it.
@@ -78,17 +76,46 @@ assemblers:
   penguin: true
   raven: true
   canu: true
+  myloasm: true
+  metamdbg: true
+  wtdbg2: true
+  shasta: true
+  miniasm: true
   # Add other assemblers if needed
  
 # --- General Parameters ---
 params:
   threads: 24
-  # Minimum contig length for PenguiN
+
+  # --- PENGUIN ---
+  # Minimum contig length
   penguin_min_contig_len: 500
-  # Minimum sequence identity for PenguiN overlaps
+  # Minimum sequence identity for overlaps
   penguin_min_seq_id: 0.95
+
+  # --- CANU ---
   # Set genome size for canu
   canu_genome_size: 200k
+
+  # --- MYLOASM ---
+  myloasm_min_reads: 10
+  myloasm_min_overlap: 250
+
+  # --- METAMDBG ---
+  metamdbg_min_overlap: 250
+  metamdbg_min_seq_id: 0.95
+
+  # --- WTDBG2 ---
+  wtdbg2_min_read_len: 500
+  wtdbg2_min_contig_len: 1000
+
+  # --- SHASTA ---
+  shasta_min_read_len: 500
+
+  # --- MINIASM ---
+  miniasm_min_overlap: 400
+
+  # --- DIAMOND ---
   # Set DIAMOND BLASTX sensitivity for read filtering
   # options: fast, mid-sensitive, sensitive, more-sensitive, very-sensitive, ultra-sensitive
   diamond_sensitivity: sensitive
