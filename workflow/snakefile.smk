@@ -60,8 +60,17 @@ def get_assembly_fasta(wildcards):
         return os.path.join(ASSEMBLY_DIR, wildcards.sample, assembler, "assembly.fasta")
     elif assembler == "canu":
         return os.path.join(ASSEMBLY_DIR, wildcards.sample, assembler, "canu_assembly.contigs.fasta")
+    elif assembler == "myloasm":
+        return os.path.join(ASSEMBLY_DIR, wildcards.sample, assembler, "assembly_primary.fa")
+    elif assembler == "metamdbg":
+        return os.path.join(ASSEMBLY_DIR, wildcards.sample, assembler, "contigs.fasta")
+    elif assembler == "wtdbg2":
+        return os.path.join(ASSEMBLY_DIR, wildcards.sample, assembler, "contigs.fasta")
+    elif assembler == "shasta":
+        return os.path.join(ASSEMBLY_DIR, wildcards.sample, assembler, "Assembly.fasta")
+    elif assembler == "miniasm":
+        return os.path.join(ASSEMBLY_DIR, wildcards.sample, assembler, "final_assembly.fasta")
     # Add other assemblers here if needed in the future
-
 
 # ===================================================================
 #                              TARGET RULE
@@ -241,89 +250,7 @@ rule calculate_reads_leftover:
         """
 
 # --- ASSEMBLY RULES ---
-
-if ASSEMBLERS_CONFIG.get("metaflye", False):
-    rule assemble_metaflye:
-        input:
-            os.path.join(READ_CLASSIFICATION_DIR, "{sample}.target_reads.fastq")
-        output:
-            dir=directory(os.path.join(ASSEMBLY_DIR, "{sample}", "metaflye")),
-            fasta=os.path.join(ASSEMBLY_DIR, "{sample}", "metaflye", "assembly.fasta")
-        threads:
-            config["params"]["threads"]
-        log:
-            os.path.join(LOG_DIR, "assemble_metaflye", "{sample}.log")
-        benchmark:
-            os.path.join(BENCH_DIR, "assemble_metaflye", "{sample}.log")
-        shell:
-            "flye --nano-raw {input} --meta -o {output.dir} --threads {threads} &> {log}"
-
-if ASSEMBLERS_CONFIG.get("penguin", False):
-    rule assemble_penguin:
-        input:
-            os.path.join(READ_CLASSIFICATION_DIR, "{sample}.target_reads.fastq")
-        output:
-            fasta=os.path.join(ASSEMBLY_DIR, "{sample}", "penguin", "contigs.fasta"),
-            tmp_dir=directory(os.path.join(ASSEMBLY_DIR, "{sample}", "penguin", "temp_files"))
-        params:
-            min_len=config["params"]["penguin_min_contig_len"],
-            min_id=config["params"]["penguin_min_seq_id"]
-        threads:
-            config["params"]["threads"]		
-        log:
-            os.path.join(LOG_DIR, "assemble_penguin", "{sample}.log")
-        benchmark:
-            os.path.join(BENCH_DIR, "assemble_penguin", "{sample}.log")
-        shell:
-            "penguin nuclassemble {input} {output.fasta} {output.tmp_dir} "
-            "--min-contig-len {params.min_len} --min-seq-id {params.min_id} "
-            "--threads {threads} &> {log}"
-
-if ASSEMBLERS_CONFIG.get("raven", False):
-    rule assemble_raven:
-        input:
-            os.path.join(READ_CLASSIFICATION_DIR, "{sample}.target_reads.fastq")
-        output:
-            os.path.join(ASSEMBLY_DIR, "{sample}", "raven", "assembly.fasta")
-        threads:
-            config["params"]["threads"]
-        log:
-            os.path.join(LOG_DIR, "assemble_raven", "{sample}.log")
-        benchmark:
-            os.path.join(BENCH_DIR, "assemble_raven", "{sample}.log")
-        shell:
-            """
-            raven --threads {threads} -p 2 {input} > {output} 2> {log}
-            rm raven.cereal
-            """
-
-if ASSEMBLERS_CONFIG.get("canu", False):
-    rule assemble_canu:
-        input:
-            os.path.join(READ_CLASSIFICATION_DIR, "{sample}.target_reads.fastq")
-        output:
-            dir=directory(os.path.join(ASSEMBLY_DIR, "{sample}", "canu")),
-            fasta=os.path.join(ASSEMBLY_DIR, "{sample}", "canu", "canu_assembly.contigs.fasta")
-        params:
-            genome_size=config["params"]["canu_genome_size"],
-            # A good rule of thumb: 4GB of memory per thread for Canu
-            memory=lambda wildcards, threads: threads * 4
-        threads:
-            config["params"]["threads"]
-        log:
-            os.path.join(LOG_DIR, "assemble_canu", "{sample}.log")
-        benchmark:
-            os.path.join(BENCH_DIR, "assemble_canu", "{sample}.log")
-        shell:
-            """
-            canu -p canu_assembly \
-            -d {output.dir} \
-            genomeSize={params.genome_size} \
-            maxThreads={threads} \
-            maxMemory={params.memory} \
-            -nanopore {input} \
-            useGrid=false 2> {log}
-            """
+include: "rules/assemblers.smk"
 
 # --- POST-ASSEMBLY PROCESSING ---
 
@@ -692,7 +619,12 @@ book:
         yaml_content += """
 format:
   html:
-    theme: cosmo
+    grid:
+      sidebar-width: 200px
+      body-width: 1250px
+      margin-width: 200px
+      gutter-width: 1em
+    theme: cyborg
     toc: true
 engine: knitr
 """
