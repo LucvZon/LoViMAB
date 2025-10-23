@@ -502,6 +502,19 @@ rule summarize_benchmarks:
         
         shell("mv benchmark_summary.csv {output.benchmark_csv}")
         shell("mv assembly_summary.csv {output.assembly_csv}")
+		
+rule gather_versions:
+     output:
+        versions=os.path.join(RESULTS_DIR, "report", "versions.tsv")
+     shell:
+        """
+        {{
+        set -euo pipefail
+        # Create a header
+        echo "Name Version Channel"
+        conda list --fields name,version,channel_name | grep -E "flye|canu|raven|plass|myloasm|metamdbg|wtdbg|shasta|miniasm|diamond" | awk '{{print $1, $2, $3}}'
+        }} > {output.versions}
+        """
 
 rule generate_quarto_report:
     input:
@@ -512,7 +525,9 @@ rule generate_quarto_report:
         target_reads=expand(os.path.join(READ_CLASSIFICATION_DIR, "{sample}.target_reads.fastq"), sample=SAMPLES),
         checkv_summaries=expand(os.path.join(STATS_DIR, "per_sample", "{sample}_checkv_summary.csv"), sample=SAMPLES),
         miuvig_summaries=expand(os.path.join(STATS_DIR, "per_sample", "{sample}_miuvig_summary.csv"), sample=SAMPLES),
-        targeted_comparisons_done=os.path.join(STATS_DIR, "all_targeted_comparisons.done")
+        targeted_comparisons_done=os.path.join(STATS_DIR, "all_targeted_comparisons.done"),
+        config_file="config/lovimab.yaml",
+        software_versions=os.path.join(RESULTS_DIR, "report", "versions.tsv")
     output:
         os.path.join(RESULTS_DIR, "report", "final_summary_report", "index.html")
     params:
@@ -544,9 +559,12 @@ rule generate_quarto_report:
         # --- Copy static assets ---
         shutil.copy(input.benchmark_csv, params.temp_quarto_src)
         shutil.copy(input.assembly_csv, params.temp_quarto_src)
+        shutil.copy(input.software_versions, params.temp_quarto_src)
+        shutil.copy(input.config_file, params.temp_quarto_src)
         for f in input.checkv_summaries: shutil.copy(f, params.temp_quarto_src)
         for f in input.miuvig_summaries: shutil.copy(f, params.temp_quarto_src)
         shutil.copy("templates/index.qmd", params.temp_quarto_src)
+        shutil.copy("templates/config_chapter.qmd", params.temp_quarto_src)
 
         chapter_files = ["index.qmd"]
 
@@ -606,6 +624,8 @@ rule generate_quarto_report:
             # 4. Write the final generated chapter
             with open(os.path.join(params.temp_quarto_src, chapter_filename), 'w') as f:
                 f.write(chapter_content)
+				
+        chapter_files.append("config_chapter.qmd")
 
         # --- Generate _quarto.yml ---
         yaml_content = """project:
