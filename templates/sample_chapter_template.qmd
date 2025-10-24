@@ -10,6 +10,52 @@ Following classification against the human virus database, **{target_read_count}
 
 This represents **{reads_leftover_pct}%** of the quality-controlled reads.
 
+## Assembly Performance
+
+### Run Time and Resource Usage
+
+This table shows the resource usage for key processes for this sample.
+
+```{{r}}
+#| label: tbl-benchmark-{sample_name}
+#| tbl-cap: "Run time, peak memory, and CPU usage for sample {sample_name}."
+#| echo: false
+
+tryCatch({{
+  csv_path <- paste0("{sample_name}", "_benchmark_summary.csv")
+  if (file.exists(csv_path)) {{
+    benchmark_data <- read.csv(csv_path, check.names = FALSE)
+    knitr::kable(benchmark_data, format = "html")
+  }} else {{
+    cat("Benchmark summary not available for this sample.")
+  }}
+}}, error = function(e) {{
+  cat("Error reading benchmark summary:", e$message)
+}})
+```
+
+### Assembly Outcome
+
+This table presents the assembly statistics for each tool for this sample.
+
+```{{r}}
+#| label: tbl-assembly-{sample_name}
+#| tbl-cap: "Assembly outcome statistics for sample {sample_name}."
+#| echo: false
+
+tryCatch({{
+  csv_path <- paste0("{sample_name}", "_assembly_summary.csv")
+  if (file.exists(csv_path)) {{
+    assembly_data <- read.csv(csv_path, check.names = FALSE)
+    knitr::kable(assembly_data, format = "html")
+  }} else {{
+    cat("Assembly summary not available for this sample.")
+  }}
+}}, error = function(e) {{
+  cat("Error reading assembly summary:", e$message)
+}})
+```
+
 ## Contig Quality (CheckV)
 
 The following tables summarize the quality of viral contigs produced by each assembler, as determined by CheckV.
