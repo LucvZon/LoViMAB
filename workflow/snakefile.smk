@@ -488,20 +488,28 @@ rule summarize_benchmarks:
         bams=expand(os.path.join(STATS_DIR, "reads_to_contigs", "{sample}_{assembler}.bam"), sample=SAMPLES, assembler=ACTIVE_ASSEMBLERS)
     output:
         benchmark_csv=os.path.join(RESULTS_DIR, "report", "benchmark_summary.csv"),
-        assembly_csv=os.path.join(RESULTS_DIR, "report", "assembly_summary.csv")
+        assembly_csv=os.path.join(RESULTS_DIR, "report", "assembly_summary.csv"),
+        per_sample_benchmarks=expand(os.path.join(STATS_DIR, "per_sample", "{sample}_benchmark_summary.csv"), sample=SAMPLES),
+        per_sample_assemblies=expand(os.path.join(STATS_DIR, "per_sample", "{sample}_assembly_summary.csv"), sample=SAMPLES)
     params:
-        script="scripts/summarize_benchmarks.py"
+        script="scripts/summarize_benchmarks.py",
+        per_sample_dir=os.path.join(STATS_DIR, "per_sample")
+    threads:
+        config["params"]["threads"]
     log:
         os.path.join(LOG_DIR, "summarize_benchmarks.log")
     run:
         all_inputs = " ".join(input.benchmarks + input.assembly_stats + input.bams)
         
         shell(
-            "python {params.script} {all_inputs} > {log} 2>&1"
+            "python {params.script} --threads {threads} {all_inputs} > {log} 2>&1"
         )
         
         shell("mv benchmark_summary.csv {output.benchmark_csv}")
         shell("mv assembly_summary.csv {output.assembly_csv}")
+        # Move per-sample files, if they exist, to the per_sample stats directory
+        shell("mv *_benchmark_summary.csv {params.per_sample_dir}/ 2>/dev/null || true")
+        shell("mv *_assembly_summary.csv {params.per_sample_dir}/ 2>/dev/null || true")
 		
 rule gather_versions:
      output:
