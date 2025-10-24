@@ -9,7 +9,9 @@ rule generate_quarto_report:
         miuvig_summaries=expand(os.path.join(STATS_DIR, "per_sample", "{sample}_miuvig_summary.csv"), sample=SAMPLES),
         targeted_comparisons_done=os.path.join(STATS_DIR, "all_targeted_comparisons.done"),
         config_file="config/lovimab.yaml",
-        software_versions=os.path.join(RESULTS_DIR, "report", "versions.tsv")
+        software_versions=os.path.join(RESULTS_DIR, "report", "versions.tsv"),
+        per_sample_benchmarks=expand(os.path.join(STATS_DIR, "per_sample", "{sample}_benchmark_summary.csv"), sample=SAMPLES),
+        per_sample_assemblies=expand(os.path.join(STATS_DIR, "per_sample", "{sample}_assembly_summary.csv"), sample=SAMPLES)
     output:
         os.path.join(RESULTS_DIR, "report", "final_summary_report", "index.html")
     params:
@@ -45,6 +47,8 @@ rule generate_quarto_report:
         shutil.copy(input.config_file, params.temp_quarto_src)
         for f in input.checkv_summaries: shutil.copy(f, params.temp_quarto_src)
         for f in input.miuvig_summaries: shutil.copy(f, params.temp_quarto_src)
+        for f in input.per_sample_benchmarks: shutil.copy(f, params.temp_quarto_src)
+        for f in input.per_sample_assemblies: shutil.copy(f, params.temp_quarto_src)
         shutil.copy("templates/index.qmd", params.temp_quarto_src)
         shutil.copy("templates/config_chapter.qmd", params.temp_quarto_src)
 
