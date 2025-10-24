@@ -419,8 +419,7 @@ rule map_reads:
         os.path.join(LOG_DIR, "map_reads", "{sample}_{assembler}.log")
     shell:
         "minimap2 -aY -t {threads} -x map-ont {input.contigs} {input.reads} 2> {log} | "
-        "samtools view -b - | "
-        "samtools sort -@ {threads} - > {output}"
+        "samtools sort -@ {threads} --output-fmt BAM -o {output}"
 
 rule aggregate_contig_mappings:
     input:
