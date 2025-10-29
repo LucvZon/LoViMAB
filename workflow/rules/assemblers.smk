@@ -230,3 +230,34 @@ if ASSEMBLERS_CONFIG.get("miniasm", False):
             minimap2 -t {threads} -x map-ont {output.dir}/polished_assembly_1.fasta {input} > {output.dir}/polished_overlaps_2.paf
             racon -t {threads} {input} {output.dir}/polished_overlaps_2.paf {output.dir}/polished_assembly_1.fasta > {output.fasta}
             """
+			
+if ASSEMBLERS_CONFIG.get("cap3", False):
+    rule assemble_cap3:
+        input:
+            # Use expand to gather contigs from ALL other active assemblers for this sample.
+            # PRIMARY_ASSEMBLERS is the list defined in the main snakefile.
+            expand(os.path.join(ASSEMBLY_DIR, "{{sample}}", "{assembler}", "renamed_contigs.fasta"), assembler=PRIMARY_ASSEMBLERS)
+        output:
+            dir=directory(os.path.join(ASSEMBLY_DIR, "{sample}", "cap3")),
+            fasta=os.path.join(ASSEMBLY_DIR, "{sample}", "cap3", "final_reassembly.fasta")
+        params:
+            overlap=config["params"]["cap3_overlap_len"],
+            identity=config["params"]["cap3_identity_pct"],
+            combined_fasta=os.path.join(ASSEMBLY_DIR, "{sample}", "cap3", "combined_contigs.fasta")
+        log:
+            os.path.join(LOG_DIR, "assemble_cap3", "{sample}.log")
+        benchmark:
+            os.path.join(BENCH_DIR, "assemble_cap3", "{sample}.log")
+        shell:
+            """
+            # Combine all input contigs from the primary assemblers into a single file
+            cat {input} > {params.combined_fasta}
+
+            # Run cap3 on the combined contigs. It outputs files based on the input filename.
+            # We redirect all screen output to the log file.
+            cap3 {params.combined_fasta} -o {params.overlap} -p {params.identity} > {log} 2>&1
+
+            # CAP3 creates a file named '{params.combined_fasta}.cap.contigs'.
+            # We move and rename it to our desired final output name.
+            mv {params.combined_fasta}.cap.contigs {output.fasta}
+            """
