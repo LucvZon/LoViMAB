@@ -1,17 +1,29 @@
 rule generate_quarto_report:
     input:
-        benchmark_csv=os.path.join(RESULTS_DIR, "report", "benchmark_summary.csv"),
-        assembly_csv=os.path.join(RESULTS_DIR, "report", "assembly_summary.csv"),
-        leftover_pcts=expand(os.path.join(STATS_DIR, "per_sample", "{sample}_reads_leftover_pct.txt"), sample=SAMPLES),
+        # --- Global Summary Files (for index.qmd) ---
+        global_benchmark_summary=os.path.join(RESULTS_DIR, "report", "benchmark_summary.csv"),
+        global_assembly_summary=os.path.join(RESULTS_DIR, "report", "assembly_summary.csv"),
+        global_checkv_summary=os.path.join(RESULTS_DIR, "report", "checkv_global_summary.csv"),
+        global_miuvig_summary=os.path.join(RESULTS_DIR, "report", "miuvig_global_summary.csv"),
+
+        # --- Per-Sample Stat Files (for sample_*.qmd chapters) ---
+        per_sample_benchmarks=expand(os.path.join(STATS_DIR, "per_sample", "{sample}_benchmark_summary.csv"), sample=SAMPLES),
+        per_sample_assemblies=expand(os.path.join(STATS_DIR, "per_sample", "{sample}_assembly_summary.csv"), sample=SAMPLES),
+        per_sample_checkv_summaries=expand(os.path.join(STATS_DIR, "per_sample", "{sample}_checkv_summary.csv"), sample=SAMPLES),
+        per_sample_miuvig_summaries=expand(os.path.join(STATS_DIR, "per_sample", "{sample}_miuvig_summary.csv"), sample=SAMPLES),
+        per_sample_read_pcts=expand(os.path.join(STATS_DIR, "per_sample", "{sample}_reads_leftover_pct.txt"), sample=SAMPLES),
+        per_sample_mean_lengths=expand(os.path.join(STATS_DIR, "per_sample", "{sample}_mean_read_length.txt"), sample=SAMPLES),
+
+        # --- Raw Data Files (for on-the-fly calculations in the run block) ---
         qc_reads=expand(os.path.join(QC_DIR, "{sample}.qc.fastq"), sample=SAMPLES),
         target_reads=expand(os.path.join(READ_CLASSIFICATION_DIR, "{sample}.target_reads.fastq"), sample=SAMPLES),
-        checkv_summaries=expand(os.path.join(STATS_DIR, "per_sample", "{sample}_checkv_summary.csv"), sample=SAMPLES),
-        miuvig_summaries=expand(os.path.join(STATS_DIR, "per_sample", "{sample}_miuvig_summary.csv"), sample=SAMPLES),
+
+        # --- Checkpoint / Flag Files (to ensure upstream rules are complete) ---
         targeted_comparisons_done=os.path.join(STATS_DIR, "all_targeted_comparisons.done"),
+
+        # --- Configuration & Metadata Files ---
         config_file="config/lovimab.yaml",
-        software_versions=os.path.join(RESULTS_DIR, "report", "versions.tsv"),
-        per_sample_benchmarks=expand(os.path.join(STATS_DIR, "per_sample", "{sample}_benchmark_summary.csv"), sample=SAMPLES),
-        per_sample_assemblies=expand(os.path.join(STATS_DIR, "per_sample", "{sample}_assembly_summary.csv"), sample=SAMPLES)
+        software_versions=os.path.join(RESULTS_DIR, "report", "versions.tsv")
     output:
         os.path.join(RESULTS_DIR, "report", "final_summary_report", "index.html")
     params:
@@ -23,6 +35,26 @@ rule generate_quarto_report:
         import shutil
         from pathlib import Path
         import re
+        import gzip # Import the gzip library
+
+        # --- Helper function to count reads ---
+        def count_fastq_reads(filepath):
+            """
+            Efficiently counts reads in a FASTQ file, handling both .gz and plain text.
+            Reads the file in chunks to be memory-efficient and fast.
+            """
+            # Choose the correct open function based on file extension
+            _open = gzip.open if str(filepath).endswith(".gz") else open
+            
+            # Open in binary mode ('rb') for speed
+            with _open(filepath, "rb") as f:
+                # Create a generator to read the file in 1MB chunks
+                buf_gen = iter(lambda: f.read(1024 * 1024), b"")
+                # Sum the count of newline characters in each chunk
+                line_count = sum(buf.count(b"\n") for buf in buf_gen)
+            
+            # Each FASTQ record has 4 lines
+            return line_count // 4
 
         # --- Helper to sanitize names for IDs/filenames ---
         def sanitize(name):
@@ -41,16 +73,18 @@ rule generate_quarto_report:
         os.makedirs(params.temp_quarto_src, exist_ok=True)
 
         # --- Copy static assets ---
-        shutil.copy(input.benchmark_csv, params.temp_quarto_src)
-        shutil.copy(input.assembly_csv, params.temp_quarto_src)
-        shutil.copy(input.software_versions, params.temp_quarto_src)
-        shutil.copy(input.config_file, params.temp_quarto_src)
-        for f in input.checkv_summaries: shutil.copy(f, params.temp_quarto_src)
-        for f in input.miuvig_summaries: shutil.copy(f, params.temp_quarto_src)
-        for f in input.per_sample_benchmarks: shutil.copy(f, params.temp_quarto_src)
-        for f in input.per_sample_assemblies: shutil.copy(f, params.temp_quarto_src)
         shutil.copy("templates/index.qmd", params.temp_quarto_src)
         shutil.copy("templates/config_chapter.qmd", params.temp_quarto_src)
+        shutil.copy(input.global_benchmark_summary, params.temp_quarto_src)
+        shutil.copy(input.global_assembly_summary, params.temp_quarto_src)
+        shutil.copy(input.global_checkv_summary, params.temp_quarto_src)
+        shutil.copy(input.global_miuvig_summary, params.temp_quarto_src)
+        shutil.copy(input.software_versions, params.temp_quarto_src)
+        shutil.copy(input.config_file, params.temp_quarto_src)
+        for f in input.per_sample_checkv_summaries: shutil.copy(f, params.temp_quarto_src)
+        for f in input.per_sample_miuvig_summaries: shutil.copy(f, params.temp_quarto_src)
+        for f in input.per_sample_benchmarks: shutil.copy(f, params.temp_quarto_src)
+        for f in input.per_sample_assemblies: shutil.copy(f, params.temp_quarto_src)
 
         chapter_files = ["index.qmd"]
 
@@ -60,10 +94,11 @@ rule generate_quarto_report:
             chapter_files.append(chapter_filename)
             
             # 1. Gather basic stats
-            with open(input.leftover_pcts[i], 'r') as f: reads_leftover_pct = f.read().strip()
-            # (Using shell for wc is fine, but python native is faster if files are huge, sticking to current logic for now)
-            total_read_count = int(shell(f"wc -l < {input.qc_reads[i]}", read=True).strip()) // 4
-            target_read_count = int(shell(f"wc -l < {input.target_reads[i]}", read=True).strip()) // 4
+            with open(input.per_sample_read_pcts[i], 'r') as f: reads_leftover_pct = f.read().strip()
+            with open(input.per_sample_mean_lengths[i], 'r') as f: mean_read_length = f.read().strip()
+
+            total_read_count = count_fastq_reads(input.qc_reads[i])
+            target_read_count = count_fastq_reads(input.target_reads[i])
             
             # 2. Format main template
             chapter_content = main_template_str.format(
@@ -71,8 +106,9 @@ rule generate_quarto_report:
                 total_read_count=f"{total_read_count:,}",
                 target_read_count=f"{target_read_count:,}",
                 reads_leftover_pct=reads_leftover_pct,
-                checkv_csv_filename=os.path.basename(input.checkv_summaries[i]),
-                miuvig_csv_filename=os.path.basename(input.miuvig_summaries[i])
+                mean_read_length=mean_read_length,
+                checkv_csv_filename=os.path.basename(input.per_sample_checkv_summaries[i]),
+                miuvig_csv_filename=os.path.basename(input.per_sample_miuvig_summaries[i])
             )
 
             # 3. Find and Process Dynamic QUAST Results
