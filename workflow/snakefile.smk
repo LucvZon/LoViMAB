@@ -32,6 +32,7 @@ onstart:
 SAMPLES = list(config["samples"].keys())
 ASSEMBLERS_CONFIG = config["assemblers"]
 ACTIVE_ASSEMBLERS = [asm for asm, active in ASSEMBLERS_CONFIG.items() if active]
+PRIMARY_ASSEMBLERS = [asm for asm in ACTIVE_ASSEMBLERS if asm != "cap3"]
 
 # Define output directories
 RESULTS_DIR = "results"
@@ -70,6 +71,8 @@ def get_assembly_fasta(wildcards):
         return os.path.join(ASSEMBLY_DIR, wildcards.sample, assembler, "Assembly.fasta")
     elif assembler == "miniasm":
         return os.path.join(ASSEMBLY_DIR, wildcards.sample, assembler, "final_assembly.fasta")
+    elif assembler == "cap3":
+         return os.path.join(ASSEMBLY_DIR, wildcards.sample, assembler, "final_reassembly.fasta")
     # Add other assemblers here if needed in the future
 
 # ===================================================================
@@ -163,7 +166,7 @@ rule merge_reads:
     shell:
         "zcat {params.prefix}*.fastq* > {output} 2> {log}"
 
-# Step ?: Trim adapter sequences 
+# Step 2: Trim adapter sequences 
 rule trim_adapters:
     input:
         os.path.join(QC_DIR, "{sample}.merged.fastq")
@@ -180,7 +183,7 @@ rule trim_adapters:
         cutadapt -j {threads} -u 9 -u -9 {output.tmp_out} > {output.fastq} 2>> {log}
         """
 
-# Step 2: Perform quality control on merged reads
+# Step 3: Perform quality control on merged reads
 rule quality_control:
     input:
         os.path.join(QC_DIR, "{sample}.trimmed.fastq")
@@ -197,7 +200,7 @@ rule quality_control:
         "--length_required 150 --qualified_quality_phred 10 -j {output.json} -h {output.html} "
         "--unqualified_percent_limit 50 --disable_adapter_trimming --thread {threads} &> {log}"
 
-# Step 3: Classify reads with DIAMOND against a custom database
+# Step 4: Classify reads with DIAMOND against a custom database
 rule classify_reads_diamond:
     input:
         os.path.join(QC_DIR, "{sample}.qc.fastq")
@@ -216,7 +219,7 @@ rule classify_reads_diamond:
         "diamond blastx {params.sensitivity_flag} -d {params.db} -q {input} -o {output} "
         "-f 6 qseqid -k 1 --threads {threads} &> {log}" # Using -k 1 for best hit
 
-# Step 4: Extract target reads based on DIAMOND classification
+# Step 5: Extract target reads based on DIAMOND classification
 rule extract_target_reads:
     input:
         reads=os.path.join(QC_DIR, "{sample}.qc.fastq"),
@@ -229,7 +232,7 @@ rule extract_target_reads:
         "awk '{{print $1}}' {input.ids} | sort -u > {output}.ids.txt 2> {log}; "
         "seqtk subseq {input.reads} {output}.ids.txt > {output} 2>> {log}"
 		
-# Step 4b: Calculate the percentage of reads kept after classification
+# Step 5b: Calculate the percentage of reads kept after classification
 rule calculate_reads_leftover:
     input:
         total_reads_file=os.path.join(QC_DIR, "{sample}.qc.fastq"),
@@ -247,6 +250,19 @@ rule calculate_reads_leftover:
         # Use awk for safe floating-point arithmetic, even if counts are zero
         awk -v target="$target_reads" -v total="$total_reads" \
         'BEGIN {{ if (total > 0) {{ printf "%.2f", (target / total) * 100 }} else {{ print "0.00" }} }}' > {output} 2> {log}
+        """
+
+# Step 5c: calculate average read length
+rule calculate_mean_length:
+    input:
+        target_reads_file=os.path.join(READ_CLASSIFICATION_DIR, "{sample}.target_reads.fastq")
+    output:
+        os.path.join(STATS_DIR, "per_sample", "{sample}_mean_read_length.txt")
+    log:
+        os.path.join(LOG_DIR, "calculate_mean_readlength", "{sample}.log")
+    shell:
+        """
+        awk '{{if(NR%4==2){{count++; bases += length}}}} END{{if (count > 0) printf "%.0f", bases/count; else print "0"}}' {input.target_reads_file} > {output} 2> {log}
         """
 
 # --- ASSEMBLY RULES ---
@@ -318,7 +334,7 @@ rule post_process_annotation:
         "python {params.script} -i {input.annotation} -c {input.contigs} "
         "-o {output.annotated} -u {output.unannotated} -log {log}"
 
-# EXPERIMENTAL STEP
+# Step 9: Separate contigs based on annotation
 checkpoint bin_contigs_by_taxonomy:
     input:
         annotation=os.path.join(ANNOTATION_DIR, "{sample}", "post_processed", "{assembler}_annotated_contigs.tsv"),
@@ -356,7 +372,7 @@ rule aggregate_targeted_comparisons:
     output:
         touch(os.path.join(STATS_DIR, "all_targeted_comparisons.done"))
 
-
+# Step 10: Run QUAST for all viruses of interest
 rule targeted_quast_comparison:
     input:
         # The input here is just a placeholder to connect to the checkpoint.
@@ -395,7 +411,7 @@ rule targeted_quast_comparison:
             shell("mkdir -p {output.out_dir} && touch {output.report} && touch {output.transposed}")
 
 
-# Step 9: Calculate assembly statistics
+# Step 11: Calculate assembly statistics
 rule calculate_stats:
     input:
         get_assembly_fasta
@@ -406,7 +422,7 @@ rule calculate_stats:
     shell:
         "stats.sh {input} format=5 > {output} 2> {log}"
 
-# Step 10: Map all QC'd reads back to each assembly
+# Step 12: Map all QC'd reads back to each assembly
 rule map_reads:
     input:
         contigs=get_assembly_fasta,
@@ -427,7 +443,7 @@ rule aggregate_contig_mappings:
     output:
         touch(os.path.join(STATS_DIR, "all_contig_mappings.done"))
 
-# Unidentified step: Map all contigs back to reference
+# Step 13: Map binned contigs back to their virus of interest
 rule map_binned_contigs_to_reference:
     input:
         binned_fasta=os.path.join(ANNOTATION_DIR, "{sample}", "binned_contigs", "{assembler}", "{virus}.fasta")
@@ -447,7 +463,7 @@ rule map_binned_contigs_to_reference:
         | samtools sort -@ {threads} -o {output.bam}
         """
 
-# Step 11: Run CheckV on each assembly
+# Step 14: Run CheckV on each assembly
 rule run_checkv:
     input:
         get_assembly_fasta
@@ -479,6 +495,29 @@ rule summarize_sample_checkv:
         os.path.join(LOG_DIR, "summarize_checkv", "{sample}.log")
     shell:
         "python {params.script} {output.checkv_csv} {output.miuvig_csv} {input} > {log} 2>&1"
+
+rule summarize_global_checkv:
+    input:
+        # Collect all quality summaries from all samples/assemblers
+        lambda wildcards: expand(
+            os.path.join(STATS_DIR, "checkv", "{sample}_{assembler}", "quality_summary.tsv"),
+            sample=SAMPLES,
+            assembler=ACTIVE_ASSEMBLERS
+        )
+    output:
+        checkv_csv=os.path.join(RESULTS_DIR, "report", "checkv_global_summary.csv"),
+        miuvig_csv=os.path.join(RESULTS_DIR, "report", "miuvig_global_summary.csv")
+    params:
+        script="scripts/summarize_checkv.py"
+    log:
+        os.path.join(LOG_DIR, "summarize_checkv_global.log")
+    shell:
+        """
+        # The script aggregates all input TSVs.
+        # Since the input files now span ALL samples, the resulting CSVs will contain one row 
+        # per assembler, summing the counts across all samples.
+        python {params.script} {output.checkv_csv} {output.miuvig_csv} {input} > {log} 2>&1
+        """
 
 rule summarize_benchmarks:
     input:
