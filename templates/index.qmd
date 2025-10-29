@@ -6,7 +6,7 @@ title: "LoViMAB Workflow Summary"
 
 This report is based on results generated with the LoViMAB v1.0.0 pipeline. WORK IN PROGRESS!!!
 
-## Table 1. Run Time and Resource Usage
+## Run Time and Resource Usage
 
 This table shows the average resource usage for key processes across all samples.
 
@@ -22,7 +22,7 @@ benchmark_data <- read.csv("benchmark_summary.csv", check.names = FALSE)
 knitr::kable(benchmark_data, format = "html")
 ```
 
-# Table 2. Assembly Outcome
+# Assembly Outcome
 
 This table presents the average assembly statistics for each tool across all detected viruses of interest. A higher mapping percentage and larger contigs are generally better.
 
@@ -33,4 +33,29 @@ This table presents the average assembly statistics for each tool across all det
 
 assembly_data <- read.csv("assembly_summary.csv", check.names = FALSE)
 knitr::kable(assembly_data, format = "html")
+```
+# Contig Quality (CheckV)
+
+These tables summarize the total contig counts categorized by CheckV quality scores across all samples. 
+
+## CheckV Quality Categories
+
+```{r}
+#| label: tbl-checkv-global
+#| tbl-cap: "Total counts of contigs per CheckV-defined quality category across all samples."
+#| echo: false
+
+checkv_global_data <- read.csv("checkv_global_summary.csv", check.names = FALSE)
+knitr::kable(checkv_global_data, format = "html")
+```
+
+## MIUViG Quality Categories
+
+```{r}
+#| label: tbl-miuvig-global
+#| tbl-cap: "Total counts of contigs per MIUViG-defined quality category across all samples."
+#| echo: false
+
+miuvig_global_data <- read.csv("miuvig_global_summary.csv", check.names = FALSE)
+knitr::kable(miuvig_global_data, format = "html")
 ```
