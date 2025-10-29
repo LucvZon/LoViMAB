@@ -30,6 +30,7 @@ assemblers:
   wtdbg2: true
   shasta: true
   miniasm: true
+  cap3: true
   # Add other assemblers if needed
  
 # --- General Parameters ---
@@ -38,10 +39,10 @@ params:
 
   # --- PENGUIN ---
   # Minimum contig length
-  penguin_min_contig_len: 500
+  penguin_min_contig_len: 1000
   # Minimum sequence identity for overlaps
   penguin_min_seq_id: 0.95
-
+  
   # --- CANU ---
   # Set genome size for canu
   canu_genome_size: 200k
@@ -55,14 +56,18 @@ params:
   metamdbg_min_seq_id: 0.95
 
   # --- WTDBG2 ---
-  wtdbg2_min_read_len: 500
+  wtdbg2_min_read_len: 400
   wtdbg2_min_contig_len: 1000
 
   # --- SHASTA ---
-  shasta_min_read_len: 500
+  shasta_min_read_len: 400
 
   # --- MINIASM ---
-  miniasm_min_overlap: 400
+  miniasm_min_overlap: 250
+
+  # --- CAP3 ---
+  cap3_overlap_len: 250
+  cap3_identity_pct: 95
 
   # --- DIAMOND ---
   # Set DIAMOND BLASTX sensitivity for read filtering
