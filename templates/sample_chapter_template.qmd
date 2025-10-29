@@ -10,6 +10,8 @@ Following classification against the human virus database, **{target_read_count}
 
 This represents **{reads_leftover_pct}%** of the quality-controlled reads.
 
+Average read length after classification: **{mean_read_length}**
+
 ## Assembly Performance
 
 ### Run Time and Resource Usage
