@@ -34,6 +34,8 @@ def main(checkv_output_path, miuvig_output_path, file_paths):
     # --- Process and save CheckV quality summary ---
     if all_checkv_data:
         checkv_summary_df = pd.DataFrame(all_checkv_data)
+        # Group by assembler and sum the counts across all samples
+        checkv_summary_df = checkv_summary_df.groupby('Assembler').sum().reset_index()
         cols = ['Assembler'] + sorted([col for col in checkv_summary_df.columns if col != 'Assembler'])
         checkv_summary_df = checkv_summary_df[cols].fillna(0).astype({col: int for col in cols if col != 'Assembler'})
     else:
@@ -45,6 +47,8 @@ def main(checkv_output_path, miuvig_output_path, file_paths):
     # --- Process and save MIUViG quality summary ---
     if all_miuvig_data:
         miuvig_summary_df = pd.DataFrame(all_miuvig_data)
+        # Group by assembler and sum the counts across all samples
+        miuvig_summary_df = miuvig_summary_df.groupby('Assembler').sum().reset_index()
         cols = ['Assembler'] + sorted([col for col in miuvig_summary_df.columns if col != 'Assembler'])
         miuvig_summary_df = miuvig_summary_df[cols].fillna(0).astype({col: int for col in cols if col != 'Assembler'})
     else:
