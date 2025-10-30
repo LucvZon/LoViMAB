@@ -46,7 +46,8 @@ def process_stats_file(filepath_str):
             'sample': sample_name,
             '# Contigs': stats['n_contigs'],
             'Total Length (bp)': stats['contig_bp'],
-            'Largest Contig (bp)': stats['ctg_max']
+            'Largest Contig (bp)': stats['ctg_max'],
+            'N50 (bp)': stats['ctg_L50']
         }
     except Exception as e:
         print(f"Warning: Could not parse stats file {filepath}. Error: {e}", file=sys.stderr)
@@ -58,8 +59,8 @@ def process_bam_file(filepath_str, threads=1):
     try:
         assembler = filepath.stem.split('_')[-1]
         sample = filepath.stem.removesuffix(f"_{assembler}")
-        total_cmd = f"samtools view -@ {threads} -c {filepath}"
-        mapped_cmd = f"samtools view -@ {threads} -c -F 4 {filepath}"
+        total_cmd = f"samtools view -@ {threads} -c -F 2304 {filepath}"
+        mapped_cmd = f"samtools view -@ {threads} -c -F 2308 {filepath}"
         
         total_reads = int(subprocess.check_output(total_cmd, shell=True).strip())
         mapped_reads = int(subprocess.check_output(mapped_cmd, shell=True).strip())
@@ -85,7 +86,7 @@ def main(all_files, threads):
             
     # --- Convert to DataFrames ---
     benchmark_df = pd.DataFrame(benchmark_data) if benchmark_data else pd.DataFrame(columns=['sample', 'process', 's', 'max_rss', 'mean_load'])
-    stats_df = pd.DataFrame(stats_data) if stats_data else pd.DataFrame(columns=['sample', 'process', '# Contigs', 'Total Length (bp)', 'Largest Contig (bp)'])
+    stats_df = pd.DataFrame(stats_data) if stats_data else pd.DataFrame(columns=['sample', 'process', '# Contigs', 'Total Length (bp)', 'Largest Contig (bp)', 'N50 (bp)'])
     bam_df = pd.DataFrame(bam_data) if bam_data else pd.DataFrame(columns=['sample', 'process', 'total_reads', 'mapped_reads'])
 
     # --- Process Overall (Averaged) Summaries ---
@@ -108,7 +109,7 @@ def main(all_files, threads):
                 sum_bam_df['Reads Mapped (%)'] = ((sum_bam_df['mapped_reads'] / sum_bam_df['total_reads']) * 100).round(2)
                 assembly_summary_avg = pd.merge(assembly_summary_avg, sum_bam_df[['process', 'Reads Mapped (%)']], on='process', how='left')
     
-    final_cols = ['process', '# Contigs', 'Largest Contig (bp)', 'Total Length (bp)', 'Reads Mapped (%)']
+    final_cols = ['process', '# Contigs', 'Largest Contig (bp)', 'Total Length (bp)', 'N50 (bp)', 'Reads Mapped (%)']
     for col in final_cols:
         if col not in assembly_summary_avg.columns:
             assembly_summary_avg[col] = 0.0
