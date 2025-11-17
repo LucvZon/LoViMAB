@@ -31,6 +31,7 @@ onstart:
 # --- Global Variables ---
 SAMPLES = list(config["samples"].keys())
 ASSEMBLERS_CONFIG = config["assemblers"]
+REASSEMBLY_CONFIG = config["reassembly"]
 ACTIVE_ASSEMBLERS = [asm for asm, active in ASSEMBLERS_CONFIG.items() if active]
 PRIMARY_ASSEMBLERS = [asm for asm in ACTIVE_ASSEMBLERS if asm != "cap3"]
 
@@ -39,6 +40,7 @@ RESULTS_DIR = "results"
 QC_DIR = os.path.join(RESULTS_DIR, "1_quality_control")
 READ_CLASSIFICATION_DIR = os.path.join(RESULTS_DIR, "2_read_classification")
 ASSEMBLY_DIR = os.path.join(RESULTS_DIR, "3_assemblies")
+REASSEMBLY_DIR = os.path.join(RESULTS_DIR, "3_reassemblies")
 ANNOTATION_DIR = os.path.join(RESULTS_DIR, "4_annotation")
 STATS_DIR = os.path.join(RESULTS_DIR, "5_stats_and_qc")
 LOG_DIR = "logs"
@@ -85,6 +87,8 @@ rule all:
         expand(os.path.join(STATS_DIR, "reads_to_contigs", "{sample}_{assembler}.bam"), sample=SAMPLES, assembler=ACTIVE_ASSEMBLERS),
         expand(os.path.join(STATS_DIR, "checkv", "{sample}_{assembler}"), sample=SAMPLES, assembler=ACTIVE_ASSEMBLERS),
         expand(os.path.join(ANNOTATION_DIR, "{sample}", "post_processed", "{assembler}_annotated_contigs.tsv"), sample=SAMPLES, assembler=ACTIVE_ASSEMBLERS),
+        # Temporary rule to trigger rule combine_assemblies
+        expand(os.path.join("results", "6_reassembly_stats", "contig_stats", "{sample}_{assembler}.stats.txt"), sample=SAMPLES, assembler=ACTIVE_ASSEMBLERS),
         # --- Specific, Targeted Reports ---
         os.path.join(STATS_DIR, "all_targeted_comparisons.done"),
         os.path.join(STATS_DIR, "all_contig_mappings.done"),
@@ -268,6 +272,23 @@ rule calculate_mean_length:
 # --- ASSEMBLY RULES ---
 include: "rules/assemblers.smk"
 
+# run this every time for now
+rule combine_assemblies:
+    input:
+        lambda wildcards: expand(os.path.join(ASSEMBLY_DIR, wildcards.sample, "{assembler}", "renamed_contigs.fasta"), assembler=ACTIVE_ASSEMBLERS)
+    output:
+        fasta=os.path.join(ASSEMBLY_DIR, "{sample}", "combined", "combined_assemblies.fasta")
+    log:
+        os.path.join(LOG_DIR, "combine_assemblies", "{sample}.log")
+    shell:
+        """
+        # Combine all contigs from active assemblers into a single file per sample.
+        cat {input} > {output.fasta} 2> {log}
+        """
+
+# --- REASSEMBLY RULES ---
+include: "rules/reassembly.smk"
+
 # --- POST-ASSEMBLY PROCESSING ---
 
 # Step 6a: Rename contigs to ensure uniqueness before aggregation
@@ -303,9 +324,19 @@ rule annotate_aggregated_contigs:
     log:
         os.path.join(LOG_DIR, "annotate_aggregated", "{sample}.log")
     shell:
-        "diamond blastx -d {params.db} -q {input} -o {output} "
-        "-f 6 qseqid sseqid pident length mismatch gapopen qstart qend sstart send evalue bitscore staxids "
-        "--threads {threads} -b 10 -c 1 &> {log}"
+        """
+        # Check if the aggregated input FASTA is non-empty
+        if [ -s {input} ]; then
+            # If it's not empty, run diamond normally
+            diamond blastx -d {params.db} -q {input} -o {output} \
+                -f 6 qseqid sseqid pident length mismatch gapopen qstart qend sstart send evalue bitscore staxids \
+                --threads {threads} -b 10 -c 1 &> {log}
+        else
+            # If it is empty, log the reason and create an empty output file
+            echo "Aggregated contigs file for {wildcards.sample} is empty. Skipping DIAMOND annotation." > {log}
+            touch {output}
+        fi
+        """
 
 # Step 7: Split the aggregated annotation file back into per-assembler files
 rule split_annotations:
@@ -387,7 +418,9 @@ rule targeted_quast_comparison:
         out_dir=directory(os.path.join(STATS_DIR, "targeted_quast", "{sample}", "{virus}")),
         transposed=os.path.join(STATS_DIR, "targeted_quast", "{sample}", "{virus}", "transposed_report.tsv")
     params:
-        reference=lambda wildcards: config["viruses_of_interest"][wildcards.virus],
+        reference=lambda wildcards: config["viruses_of_interest"][wildcards.virus]
+    threads:
+        config["params"]["threads"]
     log:
         os.path.join(LOG_DIR, "targeted_quast_comparison", "{sample}_{virus}.log")
     run:
@@ -402,7 +435,7 @@ rule targeted_quast_comparison:
             fastas_str = " ".join(fastas_to_compare)
 
             shell(
-                "quast.py -o {output.out_dir} -r {params.reference} "
+                "quast.py -o {output.out_dir} -r {params.reference} -t {threads} "
                 "-l '{labels_str}' {fastas_str} &> {log}"
             )
         else:
@@ -477,7 +510,29 @@ rule run_checkv:
     log:
         os.path.join(LOG_DIR, "run_checkv", "{sample}_{assembler}.log")
     shell:
-        "checkv end_to_end {input} {output.folder} -d {params.db} -t {threads} &> {log}"
+        """
+        # First, check if the input FASTA file is non-empty
+        if [ -s {input} ]; then
+            # If it's not empty, run checkv normally
+            checkv end_to_end {input} {output.folder} -d {params.db} -t {threads} &> {log}
+        else
+            # If it is empty, log the reason and create empty but valid output files
+            echo "Input assembly for {wildcards.sample} / {wildcards.assembler} is empty. Skipping CheckV and creating dummy output files." > {log}
+            
+            # Create the main output directory
+            mkdir -p {output.folder}
+            
+            # Create empty versions of all expected CheckV output files
+            touch {output.folder}/proviruses.fna
+            touch {output.folder}/viruses.fna
+            
+            # For TSV files, create them with just a header row to be safe
+            echo -e "contig_id\\tcontig_length\\tviral_length\\taai_expected_length\\taai_completeness\\taai_confidence\\taai_error\\taai_num_hits\\taai_top_hit\\taai_id\\taai_af\\thmm_completeness_lower\\thmm_completeness_upper\\thmm_num_hits\\tkmer_freq" > {output.folder}/completeness.tsv
+            echo -e "contig_id\\tcontig_length\\tprovirus\\tproviral_length\\tgene_count\\tviral_genes\\thost_genes\\tcheckv_quality\\tmiuvig_quality\\tcompleteness\\tcompleteness_method\\tcontamination\\tkmer_freq\\twarnings" > {output.folder}/quality_summary.tsv
+            echo -e "contig_id\\tcontig_length\\ttotal_genes\\tviral_genes\\thost_genes\\tprovirus\\tproviral_length\\thost_length\\tregion_types\\tregion_lengths\\tregion_coords_bp\\tregion_coords_genes\\tregion_viral_genes\\tregion_host_genes" > {output.folder}/contamination.tsv
+            echo -e "contig_id\\tcontig_length\\tkmer_freq\\tprediction_type\\tconfidence_level\\tconfidence_reason\\trepeat_length\\trepeat_count\\trepeat_n_freq\\trepeat_mode_base_freq\\trepeat_seq" > {output.folder}/complete_genomes.tsv
+        fi
+        """
 
 # RULES FOR SUMMARY REPORT
 rule summarize_sample_checkv:
