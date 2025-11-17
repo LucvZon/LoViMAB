@@ -19,7 +19,15 @@ if ASSEMBLERS_CONFIG.get("metaflye", False):
         benchmark:
             os.path.join(BENCH_DIR, "assemble_metaflye", "{sample}.log")
         shell:
-            "flye --nano-raw {input} --meta -o {output.dir} --threads {threads} &> {log}"
+            """
+            # Wrap the flye command in parentheses and use '||' for a fallback.
+            # The '&>' redirects both stdout and stderr to the log file.
+            (flye --nano-raw {input} --meta --min-overlap 1000 -o {output.dir} --threads {threads} &> {log}) \
+            || \
+            (echo "Flye failed for sample {wildcards.sample}, creating empty output. Check log for details." >> {log} && \
+             mkdir -p {output.dir} && \
+             touch {output.fasta})
+            """
 
 if ASSEMBLERS_CONFIG.get("penguin", False):
     rule assemble_penguin:
@@ -38,9 +46,14 @@ if ASSEMBLERS_CONFIG.get("penguin", False):
         benchmark:
             os.path.join(BENCH_DIR, "assemble_penguin", "{sample}.log")
         shell:
-            "penguin nuclassemble {input} {output.fasta} {output.tmp_dir} "
-            "--min-contig-len {params.min_len} --min-seq-id {params.min_id} "
-            "--threads {threads} &> {log}"
+            """
+            (penguin nuclassemble {input} {output.fasta} {output.tmp_dir} \
+            --min-contig-len {params.min_len} --min-seq-id {params.min_id} \
+            --threads {threads} &> {log}) \
+            || \
+            (echo "PenguiN failed for sample {wildcards.sample}, creating empty output." >> {log} && \
+             touch {output.fasta})
+            """
 
 if ASSEMBLERS_CONFIG.get("raven", False):
     rule assemble_raven:
@@ -56,8 +69,11 @@ if ASSEMBLERS_CONFIG.get("raven", False):
             os.path.join(BENCH_DIR, "assemble_raven", "{sample}.log")
         shell:
             """
-            raven --threads {threads} -p 2 {input} > {output} 2> {log}
-            rm raven.cereal
+            (raven --threads {threads} -p 2 {input} > {output} 2> {log}
+            rm raven.cereal) \
+            || \
+            (echo "Raven failed for sample {wildcards.sample}, creating empty output. Check log for details." >> {log} && \
+             touch {output})
             """
 
 if ASSEMBLERS_CONFIG.get("canu", False):
@@ -79,13 +95,18 @@ if ASSEMBLERS_CONFIG.get("canu", False):
             os.path.join(BENCH_DIR, "assemble_canu", "{sample}.log")
         shell:
             """
-            canu -p canu_assembly \
-            -d {output.dir} \
-            genomeSize={params.genome_size} \
-            maxThreads={threads} \
-            maxMemory={params.memory} \
-            -nanopore {input} \
-            useGrid=false 2> {log}
+            # Wrap the canu command in parentheses and use '||' for a fallback
+            (canu -p canu_assembly \
+                -d {output.dir} \
+                genomeSize={params.genome_size} \
+                maxThreads={threads} \
+                maxMemory={params.memory} \
+                -nanopore {input} \
+                useGrid=false 2> {log}) \
+            || \
+            (echo "Canu failed for sample {wildcards.sample}, creating empty output. Check log for details." >> {log} && \
+             mkdir -p {output.dir} && \
+             touch {output.fasta})
             """
 
 if ASSEMBLERS_CONFIG.get("myloasm", False):
@@ -106,11 +127,16 @@ if ASSEMBLERS_CONFIG.get("myloasm", False):
             os.path.join(BENCH_DIR, "assemble_myloasm", "{sample}.log")
         shell:
             """
-            myloasm {input} \
-            -o {output.dir} \
-            --min-reads-contig {params.min_reads} \
-            --min-ol {params.min_overlap} \
-            -t {threads} 2> {log}
+            # Try to run myloasm. If it fails (exits non-zero), run the command after '||'
+            (myloasm {input} \
+                -o {output.dir} \
+                --min-reads-contig {params.min_reads} \
+                --min-ol {params.min_overlap} \
+                -t {threads} 2> {log}) \
+            || \
+            (echo "Myloasm failed for sample {wildcards.sample}, creating empty output." >> {log} && \
+             mkdir -p {output.dir} && \
+             touch {output.fasta})
             """
 
 if ASSEMBLERS_CONFIG.get("metamdbg", False):
@@ -131,13 +157,17 @@ if ASSEMBLERS_CONFIG.get("metamdbg", False):
             os.path.join(BENCH_DIR, "assemble_metamdbg", "{sample}.log")
         shell:
             """
-            metaMDBG asm --in-ont {input} \
+            (metaMDBG asm --in-ont {input} \
             --out-dir {output.dir} \
             --min-read-overlap {params.min_overlap} \
             --min-read-identity {params.min_id} \
             --threads {threads} 2> {log}
 
-            gzip --decompress -c {output.dir}/contigs.fasta.gz > {output.fasta}
+            gzip --decompress -c {output.dir}/contigs.fasta.gz > {output.fasta}) \
+            || \
+            (echo "metaMDBG failed for sample {wildcards.sample}, creating empty output." >> {log} && \
+             mkdir -p {output.dir} && \
+             touch {output.fasta})
             """
 
 if ASSEMBLERS_CONFIG.get("wtdbg2", False):
@@ -160,7 +190,7 @@ if ASSEMBLERS_CONFIG.get("wtdbg2", False):
             """
             mkdir -p {output.dir}
 
-            wtdbg2 \
+            (wtdbg2 \
             -i {input} \
             -o {output.dir}/dbg \
             -t {threads} \
@@ -169,7 +199,10 @@ if ASSEMBLERS_CONFIG.get("wtdbg2", False):
             -e 2 \
             --ctg-min-length {params.min_contig_length} 2> {log}
             
-            wtpoa-cns -t {threads} -i {output.dir}/dbg.ctg.lay.gz -fo {output.fasta}
+            wtpoa-cns -t {threads} -i {output.dir}/dbg.ctg.lay.gz -fo {output.fasta}) \
+            || \
+            (echo "Wtdbg2 failed for sample {wildcards.sample}, creating empty output." >> {log} && \
+            touch {output.fasta})
             """
 
 if ASSEMBLERS_CONFIG.get("shasta", False):
@@ -189,14 +222,17 @@ if ASSEMBLERS_CONFIG.get("shasta", False):
             os.path.join(BENCH_DIR, "assemble_shasta", "{sample}.log")
         shell:
             """
-            shasta \
+            (shasta \
             --input {input} \
             --threads {threads} \
             --config Nanopore-R10-Fast-Nov2022 \
             --Reads.minReadLength {params.min_read_length} \
             --assemblyDirectory {output.dir} \
             --Align.minAlignedMarkerCount 30 \
-            --MarkerGraph.minCoverage 3 2> {log}
+            --MarkerGraph.minCoverage 3 2> {log}) \
+            || \
+            (echo "Shasta failed for sample {wildcards.sample}, creating empty output." >> {log} && \
+            touch {output.fasta})
             """
 
 if ASSEMBLERS_CONFIG.get("miniasm", False):
@@ -218,17 +254,31 @@ if ASSEMBLERS_CONFIG.get("miniasm", False):
             """
             # Create draft assembly graph
             minimap2 -t {threads} -x ava-ont {input} {input} > {output.dir}/overlaps.paf
+            # Redirect miniasm stdout and stderr to log
             miniasm -s {params.min_overlap} -f {input} {output.dir}/overlaps.paf > {output.dir}/raw_assembly.gfa 2> {log}
 
             # Convert graph to fasta
             gfatools gfa2fa {output.dir}/raw_assembly.gfa > {output.dir}/raw_assembly.fasta
 
-            # First polishing round
-            minimap2 -t {threads} -x map-ont {output.dir}/raw_assembly.fasta {input} > {output.dir}/polished_overlaps_1.paf
-            racon -t {threads} {input} {output.dir}/polished_overlaps_1.paf {output.dir}/raw_assembly.fasta > {output.dir}/polished_assembly_1.fasta
-            # Second polishing round
-            minimap2 -t {threads} -x map-ont {output.dir}/polished_assembly_1.fasta {input} > {output.dir}/polished_overlaps_2.paf
-            racon -t {threads} {input} {output.dir}/polished_overlaps_2.paf {output.dir}/polished_assembly_1.fasta > {output.fasta}
+            # --- ROBUSTNESS CHECK ---
+            # Check if the raw assembly FASTA is empty. The '-s' flag checks if a file has a size greater than zero.
+            if [ -s {output.dir}/raw_assembly.fasta ]; then
+                # If the file is NOT empty, proceed with polishing
+                echo "Miniasm produced contigs. Proceeding with Racon polishing." >> {log}
+
+                # First polishing round
+                minimap2 -t {threads} -x map-ont {output.dir}/raw_assembly.fasta {input} > {output.dir}/polished_overlaps_1.paf 2>> {log}
+                racon -t {threads} {input} {output.dir}/polished_overlaps_1.paf {output.dir}/raw_assembly.fasta > {output.dir}/polished_assembly_1.fasta 2>> {log}
+                
+                # Second polishing round
+                minimap2 -t {threads} -x map-ont {output.dir}/polished_assembly_1.fasta {input} > {output.dir}/polished_overlaps_2.paf 2>> {log}
+                racon -t {threads} {input} {output.dir}/polished_overlaps_2.paf {output.dir}/polished_assembly_1.fasta > {output.fasta} 2>> {log}
+
+            else
+                # If the file IS empty, skip polishing and create an empty final file
+                echo "Miniasm produced no contigs for sample {wildcards.sample}. Skipping polishing." >> {log}
+                touch {output.fasta}
+            fi
             """
 			
 if ASSEMBLERS_CONFIG.get("cap3", False):
