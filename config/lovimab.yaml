@@ -32,6 +32,11 @@ assemblers:
   miniasm: true
   cap3: true
   # Add other assemblers if needed
+
+# --- REASSEMBLY ---
+# Aggregate assemblers contigs and reassemble
+reassembly:
+  reassemble_contigs: true
  
 # --- General Parameters ---
 params:
