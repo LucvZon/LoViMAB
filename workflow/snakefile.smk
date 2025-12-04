@@ -10,10 +10,24 @@ import glob
 # --- Load Configuration ---
 configfile: "config/lovimab.yaml"
 
+# --- Global Variables ---
+SAMPLES = list(config["samples"].keys())
+ASSEMBLERS_CONFIG = config["assemblers"]
+REASSEMBLY_CONFIG = config["reassembly"]
+ACTIVE_ASSEMBLERS = [asm for asm, active in ASSEMBLERS_CONFIG.items() if active]
+PRIMARY_ASSEMBLERS = [asm for asm in ACTIVE_ASSEMBLERS if asm != "cap3"]
+
+# --- Handle Optional Viruses of Interest ---
+# Safely get the dictionary, defaulting to empty if missing or None
+VIRUSES_OF_INTEREST = config.get("viruses_of_interest")
+if VIRUSES_OF_INTEREST is None:
+    VIRUSES_OF_INTEREST = {}
+
 # --- Onstart: Validate Configuration ---
 onstart:
     # Check if every file path listed in configfile exists.
-    for virus_name, ref_path in config["viruses_of_interest"].items():
+    # We now use the safe VIRUSES_OF_INTEREST variable
+    for virus_name, ref_path in VIRUSES_OF_INTEREST.items():
         if not os.path.exists(ref_path):
             raise WorkflowError(
                 f"Configuration Error: The reference genome path for virus '{virus_name}' "
@@ -28,14 +42,7 @@ onstart:
                 f"  -> Path provided: {db_path}"
             )
 
-# --- Global Variables ---
-SAMPLES = list(config["samples"].keys())
-ASSEMBLERS_CONFIG = config["assemblers"]
-REASSEMBLY_CONFIG = config["reassembly"]
-ACTIVE_ASSEMBLERS = [asm for asm, active in ASSEMBLERS_CONFIG.items() if active]
-PRIMARY_ASSEMBLERS = [asm for asm in ACTIVE_ASSEMBLERS if asm != "cap3"]
-
-# Define output directories
+# --- Define output directories ---
 RESULTS_DIR = "results"
 QC_DIR = os.path.join(RESULTS_DIR, "1_quality_control")
 READ_CLASSIFICATION_DIR = os.path.join(RESULTS_DIR, "2_read_classification")
@@ -105,6 +112,10 @@ def get_possible_quast_comparisons(wildcards):
     to determine which grouped QUAST comparison reports are possible to generate.
     """
     found_combos = set()
+
+    # Return empty immediately if no viruses of interest are configured
+    if not VIRUSES_OF_INTEREST:
+        return []
     
     # Iterate through each sample and assembler combination
     # and get the checkpoint output for each one individually.
@@ -140,6 +151,10 @@ def get_possible_contig_mappings(wildcards):
     can be mapped to their corresponding reference of interest.
     """
     possible_bam_files = []
+
+    # Return empty immediately if no viruses of interest are configured
+    if not VIRUSES_OF_INTEREST:
+        return []
     
     for sample in SAMPLES:
         for assembler in ACTIVE_ASSEMBLERS:
