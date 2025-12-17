@@ -327,7 +327,10 @@ include: "rules/assemblers.smk"
 # run this every time for now
 rule combine_assemblies:
     input:
-        lambda wildcards: expand(os.path.join(ASSEMBLY_DIR, wildcards.sample, "{assembler}", "renamed_contigs.fasta"), assembler=ACTIVE_ASSEMBLERS)
+        lambda wildcards: expand(
+            os.path.join(ANNOTATION_DIR, "staging", "primary", wildcards.sample, "{assembler}.fasta"), 
+            assembler=ACTIVE_ASSEMBLERS
+        )
     output:
         fasta=os.path.join(ASSEMBLY_DIR, "{sample}", "combined", "combined_assemblies.fasta")
     log:
@@ -632,7 +635,7 @@ rule summarize_global_checkv:
         # Collect all quality summaries from all samples/assemblers
         lambda wildcards: expand(
             os.path.join(STATS_DIR, "checkv", "{assembly_type}", "{sample}_{assembler}", "quality_summary.tsv"),
-            assembly_type=ASSEMBLY_TYPES,
+            assembly_type=wildcards.assembly_type,
             sample=SAMPLES,
             assembler=ACTIVE_ASSEMBLERS
         )
