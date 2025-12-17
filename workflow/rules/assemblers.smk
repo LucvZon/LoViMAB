@@ -15,9 +15,9 @@ if ASSEMBLERS_CONFIG.get("metaflye", False):
         threads:
             config["params"]["threads"]
         log:
-            os.path.join(LOG_DIR, "assemble_metaflye", "{sample}.log")
+            os.path.join(LOG_DIR, "primary", "metaflye", "{sample}.log")
         benchmark:
-            os.path.join(BENCH_DIR, "assemble_metaflye", "{sample}.log")
+            os.path.join(BENCH_DIR, "primary", "metaflye", "{sample}.log")
         shell:
             """
             # Wrap the flye command in parentheses and use '||' for a fallback.
@@ -42,9 +42,9 @@ if ASSEMBLERS_CONFIG.get("penguin", False):
         threads:
             config["params"]["threads"]		
         log:
-            os.path.join(LOG_DIR, "assemble_penguin", "{sample}.log")
+            os.path.join(LOG_DIR, "primary", "penguin", "{sample}.log")
         benchmark:
-            os.path.join(BENCH_DIR, "assemble_penguin", "{sample}.log")
+            os.path.join(BENCH_DIR, "primary", "penguin", "{sample}.log")
         shell:
             """
             (penguin nuclassemble {input} {output.fasta} {output.tmp_dir} \
@@ -64,9 +64,9 @@ if ASSEMBLERS_CONFIG.get("raven", False):
         threads:
             config["params"]["threads"]
         log:
-            os.path.join(LOG_DIR, "assemble_raven", "{sample}.log")
+            os.path.join(LOG_DIR, "primary", "raven", "{sample}.log")
         benchmark:
-            os.path.join(BENCH_DIR, "assemble_raven", "{sample}.log")
+            os.path.join(BENCH_DIR, "primary", "raven", "{sample}.log")
         shell:
             """
             (raven --threads {threads} -p 2 {input} > {output} 2> {log}
@@ -90,9 +90,9 @@ if ASSEMBLERS_CONFIG.get("canu", False):
         threads:
             config["params"]["threads"]
         log:
-            os.path.join(LOG_DIR, "assemble_canu", "{sample}.log")
+            os.path.join(LOG_DIR, "primary", "canu", "{sample}.log")
         benchmark:
-            os.path.join(BENCH_DIR, "assemble_canu", "{sample}.log")
+            os.path.join(BENCH_DIR, "primary", "canu", "{sample}.log")
         shell:
             """
             # Wrap the canu command in parentheses and use '||' for a fallback
@@ -122,9 +122,9 @@ if ASSEMBLERS_CONFIG.get("myloasm", False):
         threads:
             config["params"]["threads"]
         log:
-            os.path.join(LOG_DIR, "assemble_myloasm", "{sample}.log")
+            os.path.join(LOG_DIR, "primary", "myloasm", "{sample}.log")
         benchmark:
-            os.path.join(BENCH_DIR, "assemble_myloasm", "{sample}.log")
+            os.path.join(BENCH_DIR, "primary", "myloasm", "{sample}.log")
         shell:
             """
             # Try to run myloasm. If it fails (exits non-zero), run the command after '||'
@@ -152,9 +152,9 @@ if ASSEMBLERS_CONFIG.get("metamdbg", False):
         threads:
             config["params"]["threads"]
         log:
-            os.path.join(LOG_DIR, "assemble_metamdbg", "{sample}.log")
+            os.path.join(LOG_DIR, "primary", "metamdbg", "{sample}.log")
         benchmark:
-            os.path.join(BENCH_DIR, "assemble_metamdbg", "{sample}.log")
+            os.path.join(BENCH_DIR, "primary", "metamdbg", "{sample}.log")
         shell:
             """
             (metaMDBG asm --in-ont {input} \
@@ -183,9 +183,9 @@ if ASSEMBLERS_CONFIG.get("wtdbg2", False):
         threads:
             config["params"]["threads"]
         log:
-            os.path.join(LOG_DIR, "assemble_wtdbg2", "{sample}.log")
+            os.path.join(LOG_DIR, "primary", "wtdbg2", "{sample}.log")
         benchmark:
-            os.path.join(BENCH_DIR, "assemble_wtdbg2", "{sample}.log")
+            os.path.join(BENCH_DIR, "primary", "wtdbg2", "{sample}.log")
         shell:
             """
             mkdir -p {output.dir}
@@ -217,9 +217,9 @@ if ASSEMBLERS_CONFIG.get("shasta", False):
         threads:
             config["params"]["threads"]
         log:
-            os.path.join(LOG_DIR, "assemble_shasta", "{sample}.log")
+            os.path.join(LOG_DIR, "primary", "shasta", "{sample}.log")
         benchmark:
-            os.path.join(BENCH_DIR, "assemble_shasta", "{sample}.log")
+            os.path.join(BENCH_DIR, "primary", "shasta", "{sample}.log")
         shell:
             """
             (shasta \
@@ -247,9 +247,9 @@ if ASSEMBLERS_CONFIG.get("miniasm", False):
         threads:
             config["params"]["threads"]
         log:
-            os.path.join(LOG_DIR, "assemble_miniasm", "{sample}.log")
+            os.path.join(LOG_DIR, "primary", "miniasm", "{sample}.log")
         benchmark:
-            os.path.join(BENCH_DIR, "assemble_miniasm", "{sample}.log")
+            os.path.join(BENCH_DIR, "primary", "miniasm", "{sample}.log")
         shell:
             """
             # Create draft assembly graph
