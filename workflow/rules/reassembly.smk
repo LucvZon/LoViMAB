@@ -36,9 +36,9 @@ if REASSEMBLY_CONFIG.get("reassemble_contigs", False):
         threads:
             config["params"]["threads"]
         log:
-            os.path.join(LOG_DIR, "reassemble_metaflye", "{sample}.log")
+            os.path.join(LOG_DIR, "secondary", "metaflye", "{sample}.log")
         benchmark:
-            os.path.join(BENCH_DIR, "reassemble_metaflye", "{sample}.log")
+            os.path.join(BENCH_DIR, "secondary", "metaflye", "{sample}.log")
         shell:
             """
             (flye --nano-raw {input} --meta --min-overlap 1000 -o {output.dir} --threads {threads} &> {log}) \
@@ -61,9 +61,9 @@ if REASSEMBLY_CONFIG.get("reassemble_contigs", False):
         threads:
             config["params"]["threads"]		
         log:
-            os.path.join(LOG_DIR, "reassemble_penguin", "{sample}.log")
+            os.path.join(LOG_DIR, "secondary", "penguin", "{sample}.log")
         benchmark:
-            os.path.join(BENCH_DIR, "reassemble_penguin", "{sample}.log")
+            os.path.join(BENCH_DIR, "secondary", "penguin", "{sample}.log")
         shell:
             """
             (penguin nuclassemble {input} {output.fasta} {output.tmp_dir} \
@@ -83,9 +83,9 @@ if REASSEMBLY_CONFIG.get("reassemble_contigs", False):
         threads:
             config["params"]["threads"]
         log:
-            os.path.join(LOG_DIR, "reassemble_raven", "{sample}.log")
+            os.path.join(LOG_DIR, "secondary", "raven", "{sample}.log")
         benchmark:
-            os.path.join(BENCH_DIR, "reassemble_raven", "{sample}.log")
+            os.path.join(BENCH_DIR, "secondary", "raven", "{sample}.log")
         shell:
             """
             (raven --threads {threads} -p 2 {input} > {output} 2> {log}
@@ -109,9 +109,9 @@ if REASSEMBLY_CONFIG.get("reassemble_contigs", False):
         threads:
             config["params"]["threads"]
         log:
-            os.path.join(LOG_DIR, "reassemble_canu", "{sample}.log")
+            os.path.join(LOG_DIR, "secondary", "canu", "{sample}.log")
         benchmark:
-            os.path.join(BENCH_DIR, "reassemble_canu", "{sample}.log")
+            os.path.join(BENCH_DIR, "secondary", "canu", "{sample}.log")
         shell:
             """
             (canu -assemble -corrected \
@@ -141,9 +141,9 @@ if REASSEMBLY_CONFIG.get("reassemble_contigs", False):
         threads:
             config["params"]["threads"]
         log:
-            os.path.join(LOG_DIR, "reassemble_myloasm", "{sample}.log")
+            os.path.join(LOG_DIR, "secondary", "myloasm", "{sample}.log")
         benchmark:
-            os.path.join(BENCH_DIR, "reassemble_myloasm", "{sample}.log")
+            os.path.join(BENCH_DIR, "secondary", "myloasm", "{sample}.log")
         shell:
             """
             (myloasm {input} \
@@ -170,9 +170,9 @@ if REASSEMBLY_CONFIG.get("reassemble_contigs", False):
         threads:
             config["params"]["threads"]
         log:
-            os.path.join(LOG_DIR, "reassemble_metamdbg", "{sample}.log")
+            os.path.join(LOG_DIR, "secondary", "metamdbg", "{sample}.log")
         benchmark:
-            os.path.join(BENCH_DIR, "reassemble_metamdbg", "{sample}.log")
+            os.path.join(BENCH_DIR, "secondary", "metamdbg", "{sample}.log")
         shell:
             """
             (metaMDBG asm --in-ont {input} \
@@ -201,9 +201,9 @@ if REASSEMBLY_CONFIG.get("reassemble_contigs", False):
         threads:
             config["params"]["threads"]
         log:
-            os.path.join(LOG_DIR, "reassemble_wtdbg2", "{sample}.log")
+            os.path.join(LOG_DIR, "secondary", "wtdbg2", "{sample}.log")
         benchmark:
-            os.path.join(BENCH_DIR, "reassemble_wtdbg2", "{sample}.log")
+            os.path.join(BENCH_DIR, "secondary", "wtdbg2", "{sample}.log")
         shell:
             """
             mkdir -p {output.dir}
@@ -235,9 +235,9 @@ if REASSEMBLY_CONFIG.get("reassemble_contigs", False):
         threads:
             config["params"]["threads"]
         log:
-            os.path.join(LOG_DIR, "reassemble_shasta", "{sample}.log")
+            os.path.join(LOG_DIR, "secondary", "shasta", "{sample}.log")
         benchmark:
-            os.path.join(BENCH_DIR, "reassemble_shasta", "{sample}.log")
+            os.path.join(BENCH_DIR, "secondary", "shasta", "{sample}.log")
         shell:
             """
             (shasta \
@@ -265,9 +265,9 @@ if REASSEMBLY_CONFIG.get("reassemble_contigs", False):
         threads:
             config["params"]["threads"]
         log:
-            os.path.join(LOG_DIR, "reassemble_miniasm", "{sample}.log")
+            os.path.join(LOG_DIR, "secondary", "miniasm", "{sample}.log")
         benchmark:
-            os.path.join(BENCH_DIR, "reassemble_miniasm", "{sample}.log")
+            os.path.join(BENCH_DIR, "secondary", "miniasm", "{sample}.log")
         shell:
             """
             # Create draft assembly graph
@@ -278,77 +278,80 @@ if REASSEMBLY_CONFIG.get("reassemble_contigs", False):
             gfatools gfa2fa {output.dir}/raw_assembly.gfa > {output.fasta}
             """
 
-
-# Place quality assessment rules here
-# Step 11: Calculate assembly statistics
-rule reassembly_calculate_stats:
-    input:
-        get_reassembly_fasta
-    output:
-        os.path.join("results", "6_reassembly_stats", "contig_stats", "{sample}_{assembler}.stats.txt")
-    log:
-        os.path.join(LOG_DIR, "reassembly_calculate_stats", "{sample}_{assembler}.log")
-    shell:
-        "stats.sh {input} format=5 > {output} 2> {log}"
-
-# Map QC'd reads back to reassembled contigs
-rule map_reads_to_reassembly:
-    input:
-        contigs=get_reassembly_fasta,
-        reads=os.path.join(QC_DIR, "{sample}.qc.fastq")
-    output:
-        os.path.join("results", "6_reassembly_stats", "reads_to_contigs", "{sample}_{assembler}.bam")
-    threads:
-        config["params"]["threads"]
-    log:
-        os.path.join(LOG_DIR, "reassemble_map_reads", "{sample}_{assembler}.log")
-    shell:
-        "minimap2 -aY -t {threads} -x map-ont {input.contigs} {input.reads} 2> {log} | "
-        "samtools sort -@ {threads} --output-fmt BAM -o {output}"
-
 # Map original contigs to reassembled contigs
-rule map_contigs_to_reassembly:
-    input:
-        reassembled=get_reassembly_fasta,
-        original=get_assembly_fasta
-    output:
-        os.path.join("results", "6_reassembly_stats", "original_to_reassembled", "{sample}_{assembler}.bam")
-    threads:
-        config["params"]["threads"]
-    log:
-        os.path.join(LOG_DIR, "contigs_to_reassembly", "{sample}_{assembler}.log")
-    shell:
-        "minimap2 -aY -t {threads} -x map-ont {input.reassembled} {input.original} 2> {log} | "
-        "samtools sort -@ {threads} --output-fmt BAM -o {output}"
+if REASSEMBLY_CONFIG.get("reassemble_contigs", False):
+    rule map_contigs_to_reassembly:
+        message:
+            "Map all contigs from the original (all assemblers) to a specific reassembly"
+        input:
+            reassembled=get_reassembly_fasta,
+            combined=os.path.join(ASSEMBLY_DIR, "{sample}", "combined", "combined_assemblies.fasta")
+        output:
+            os.path.join(CLUSTER_DIR, "{sample}", "{assembler}" "combined_contigs_to_reassembly.bam")
+        threads:
+            config["params"]["threads"]
+        log:
+            os.path.join(LOG_DIR, "contigs_to_reassembly", "{sample}_{assembler}.log")
+        shell:
+            """
+            # I don't want to grab get_assembly_fasta, I want to grab combined.fasta
+            minimap2 -ax asm20 -t {threads} {input.reassembled} {input.combined} \
+            | samtools sort -@ {threads} --output-fmt BAM -o {output}
+            """
 
-# Utilize old summary scripts logic
-rule summarize_reassembly_benchmarks:
-    input:
-        benchmarks=expand("benchmarks/{process}/{sample}.log", process=[f"reassemble_{asm}" for asm in ACTIVE_ASSEMBLERS], sample=SAMPLES),
-        assembly_stats=expand(os.path.join("results", "6_reassembly_stats", "contig_stats", "{sample}_{assembler}.stats.txt"), sample=SAMPLES, assembler=ACTIVE_ASSEMBLERS),
-        bams=expand(os.path.join("results", "6_reassembly_stats", "reads_to_contigs", "{sample}_{assembler}.bam"), sample=SAMPLES, assembler=ACTIVE_ASSEMBLERS)
-    output:
-        benchmark_csv=os.path.join(RESULTS_DIR, "report", "reassembly_benchmark_summary.csv"),
-        assembly_csv=os.path.join(RESULTS_DIR, "report", "reassembly_assembly_summary.csv"),
-        per_sample_benchmarks=expand(os.path.join("results", "6_reassembly_stats", "per_sample", "{sample}_benchmark_summary.csv"), sample=SAMPLES),
-        per_sample_assemblies=expand(os.path.join("results", "6_reassembly_stats", "per_sample", "{sample}_assembly_summary.csv"), sample=SAMPLES)
-    params:
-        script="scripts/summarize_benchmarks.py",
-        per_sample_dir=os.path.join("results", "6_reassembly_stats", "per_sample")
-    threads:
-        config["params"]["threads"]
-    log:
-        os.path.join(LOG_DIR, "reassembly_summarize_benchmarks.log")
-    run:
-        all_inputs = " ".join(input.benchmarks + input.assembly_stats + input.bams)
-        
-        shell(
-            "python {params.script} --threads {threads} {all_inputs} > {log} 2>&1"
-        )
-        
-        shell("mv benchmark_summary.csv {output.benchmark_csv}")
-        shell("mv assembly_summary.csv {output.assembly_csv}")
-        # Move per-sample files, if they exist, to the per_sample stats directory
-        shell("mv *_benchmark_summary.csv {params.per_sample_dir}/ 2>/dev/null || true")
-        shell("mv *_assembly_summary.csv {params.per_sample_dir}/ 2>/dev/null || true")
+if REASSEMBLY_CONFIG.get("reassemble_contigs", False):
+    rule extract_and_cluster:
+        message:
+            "Extracting unmapped contigs and clustering them with MMseqs2"
+        input:
+            bam=os.path.join(CLUSTER_DIR, "{sample}", "{assembler}" "combined_contigs_to_reassembly.bam"),
+            combined=os.path.join(ASSEMBLY_DIR, "{sample}", "combined", "combined_assemblies.fasta")
+        output:
+            read_ids=temp(os.path.join(CLUSTER_DIR, "{sample}", "{assembler}", "{sample}_unmapped_read_ids.txt")),
+            unmapped=temp(os.path.join(CLUSTER_DIR, "{sample}", "{assembler}", "{sample}_unmapped_contigs.fasta")),
+            rep_seq=os.path.join(CLUSTER_DIR, "{sample}", "{assembler}", "cluster_rep_seq.fasta"),
+            cluster_tsv=os.path.join(CLUSTER_DIR, "{sample}", "{assembler}", "cluster_cluster.tsv")
+        params:
+            out_prefix=os.path.join(CLUSTER_DIR, "{sample}", "{assembler}", "cluster"),
+            tmp_dir=os.path.join(CLUSTER_DIR, "{sample}", "{assembler}", "tmp")
+        threads:
+            config["params"]["threads"]
+        log:
+            os.path.join(LOG_DIR, "clusters", "{sample}_{assembler}.log")
+        benchmark:
+            os.path.join(BENCH_DIR, "final", "{assembler}", "{sample}.log")
+        shell:
+            """
+            # 1. Extract unmapped contigs
+            # -f 4 gets unmapped reads
+            samtools view -f 4 {input.bam} | cut -f1 | sort -u > {output.read_ids}
 
+            # Extract sequences (seqkit grep needs exact ID matches)
+            seqkit grep -f {output.read_ids} {input.combined} -o {output.unmapped}
+            
+            # 2. Cluster unmapped contigs
+            # Ensure the temp dir exists
+            mkdir -p {params.tmp_dir}
+
+            # Command syntax: mmseqs easy-cluster <input> <output_prefix> <tmp_dir>
+            mmseqs easy-cluster {output.unmapped} {params.out_prefix} {params.tmp_dir} \
+            --min-seq-id 0.9 -c 0.8 --cov-mode 1 --remove-tmp-files 1 >> {log} 2>&1
+            """
+
+if REASSEMBLY_CONFIG.get("reassemble_contigs", False):
+    rule merge_clustered_and_reassembly:
+        message:
+            "Combine unmapped clustered contigs with reassembled contigs"
+        input:
+            clusters=os.path.join(CLUSTER_DIR, "{sample}", "{assembler}", "cluster_rep_seq.fasta"),
+            reassembly=get_reassembly_fasta
+        output:
+            final_fasta=os.path.join(FINAL_DIR, "{sample}", "{assembler}", "final_assembly.fasta")
+        threads:
+            config["params"]["threads"]
+        log:
+            os.path.join(LOG_DIR, "contigs_to_reassembly", "{sample}_{assembler}.log")
+        shell:
+            """
+            cat {input.clusters} {input.reassembly} > {output.final_fasta}
+            """
