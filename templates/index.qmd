@@ -22,7 +22,7 @@ benchmark_data <- read.csv("benchmark_summary.csv", check.names = FALSE)
 knitr::kable(benchmark_data, format = "html")
 ```
 
-# Assembly Outcome
+# Assembly stats
 
 This table presents the average assembly statistics for each tool across all detected viruses of interest. A higher mapping percentage and larger contigs are generally better.
 
