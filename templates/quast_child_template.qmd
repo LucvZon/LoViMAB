@@ -1,10 +1,8 @@
-### {assembly_type_name}
-
 #### vs. {virus_display_name}
 
 ```{{r}}
 #| label: tbl-quast-{unique_id}
-#| tbl-cap: "QUAST metrics for {assembly_type_name} compared against the {virus_display_name} reference."
+#| tbl-cap: "QUAST metrics compared against the {virus_display_name} reference."
 #| echo: false
 #| warning: false
 #| message: false
