@@ -16,74 +16,95 @@ Average read length after classification: **{mean_read_length}**
 
 ### Run Time and Resource Usage
 
-This table shows the resource usage for key processes for this sample.
-
 ```{{r}}
 #| label: tbl-benchmark-{sample_name}
-#| tbl-cap: "Run time, peak memory, and CPU usage for sample {sample_name}."
 #| echo: false
+#| results: asis
 
-tryCatch({{
-  csv_path <- paste0("{sample_name}", "_benchmark_summary.csv")
-  if (file.exists(csv_path)) {{
-    benchmark_data <- read.csv(csv_path, check.names = FALSE)
-    knitr::kable(benchmark_data, format = "html")
-  }} else {{
-    cat("Benchmark summary not available for this sample.")
+sample_name <- "{sample_name}"
+types <- c("primary", "secondary", "final")
+
+for (t in types) {{
+  # Construct filename: Sample1_primary_benchmark_summary.csv
+  filename <- paste0(sample_name, "_", t, "_benchmark_summary.csv")
+  
+  if (file.exists(filename)) {{
+    # DOUBLE BRACES {{ }} AROUND THE STYLE ATTRIBUTE TO PREVENT CRASHING
+    cat(paste0("\n#### ", tools::toTitleCase(t), " {{style='text-align: left;'}}\n\n"))
+    
+    data <- read.csv(filename, check.names = FALSE)
+    print(
+      knitr::kable(data, format = "html", table.attr = 'class="table table-striped table-hover" style="font-size:15px;"')
+    )
+    cat("\n\n")
   }}
-}}, error = function(e) {{
-  cat("Error reading benchmark summary:", e$message)
-}})
+}}
 ```
 
 ### Assembly Outcome
 
-This table presents the assembly statistics for each tool for this sample.
-
 ```{{r}}
 #| label: tbl-assembly-{sample_name}
-#| tbl-cap: "Assembly outcome statistics for sample {sample_name}."
 #| echo: false
+#| results: asis
 
-tryCatch({{
-  csv_path <- paste0("{sample_name}", "_assembly_summary.csv")
-  if (file.exists(csv_path)) {{
-    assembly_data <- read.csv(csv_path, check.names = FALSE)
-    knitr::kable(assembly_data, format = "html")
-  }} else {{
-    cat("Assembly summary not available for this sample.")
+for (t in types) {{
+  filename <- paste0(sample_name, "_", t, "_assembly_summary.csv")
+  
+  if (file.exists(filename)) {{
+    cat(paste0("\n#### ", tools::toTitleCase(t), " {{style='text-align: left;'}}\n\n"))
+    
+    data <- read.csv(filename, check.names = FALSE)
+    print(
+      knitr::kable(data, format = "html", table.attr = 'class="table table-striped table-hover" style="font-size:15px;"')
+    )
+    cat("\n\n")
   }}
-}}, error = function(e) {{
-  cat("Error reading assembly summary:", e$message)
-}})
+}}
 ```
 
 ## Contig Quality (CheckV)
-
-The following tables summarize the quality of viral contigs produced by each assembler, as determined by CheckV.
 
 ### CheckV Quality Categories
 
 ```{{r}}
 #| label: tbl-checkv-quality
-#| tbl-cap: "Counts of contigs per CheckV-defined quality category."
 #| echo: false
+#| results: asis
 
-# Construct the filename for this specific sample's summary
-csv_path <- paste0("{sample_name}", "_checkv_summary.csv")
-checkv_data <- read.csv(csv_path, check.names = FALSE)
-knitr::kable(checkv_data, format = "html")
+for (t in types) {{
+  filename <- paste0(sample_name, "_", t, "_checkv_summary.csv")
+  
+  if (file.exists(filename)) {{
+    cat(paste0("\n#### ", tools::toTitleCase(t), " {{style='text-align: left;'}}\n\n"))
+    
+    data <- read.csv(filename, check.names = FALSE)
+    print(
+      knitr::kable(data, format = "html", table.attr = 'class="table table-striped table-hover" style="font-size:15px;"')
+    )
+    cat("\n\n")
+  }}
+}}
 ```
 
 ### MIUViG Quality Categories
 
 ```{{r}}
 #| label: tbl-miuvig-quality
-#| tbl-cap: "Counts of contigs per MIUViG-defined quality category."
 #| echo: false
+#| results: asis
 
-# Construct the filename for this specific sample's summary
-csv_path <- paste0("{sample_name}", "_miuvig_summary.csv")
-miuvig_data <- read.csv(csv_path, check.names = FALSE)
-knitr::kable(miuvig_data, format = "html")
+for (t in types) {{
+  filename <- paste0(sample_name, "_", t, "_miuvig_summary.csv")
+  
+  if (file.exists(filename)) {{
+    cat(paste0("\n#### ", tools::toTitleCase(t), " {{style='text-align: left;'}}\n\n"))
+    
+    data <- read.csv(filename, check.names = FALSE)
+    print(
+      knitr::kable(data, format = "html", table.attr = 'class="table table-striped table-hover" style="font-size:15px;"')
+    )
+    cat("\n\n")
+  }}
+}}
 ```
