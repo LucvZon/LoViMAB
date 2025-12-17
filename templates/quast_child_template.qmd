@@ -1,8 +1,10 @@
-### vs. {virus_display_name}
+### {assembly_type_name}
+
+#### vs. {virus_display_name}
 
 ```{{r}}
 #| label: tbl-quast-{unique_id}
-#| tbl-cap: "QUAST metrics for assemblies compared against the {virus_display_name} reference."
+#| tbl-cap: "QUAST metrics for {assembly_type_name} compared against the {virus_display_name} reference."
 #| echo: false
 #| warning: false
 #| message: false
@@ -27,9 +29,7 @@ row_order <- c(
 tryCatch({{
   quast_result <- read_tsv(quast_report_file, show_col_types = FALSE)
 
-  # Robustly select only columns that are present in the data
-  expected_assemblers <- c("canu", "metaflye", "penguin", "raven", "myloasm", "metamdbg", "shasta", "miniasm", "wtdbg2")
-  present_assemblers <- intersect(colnames(quast_result), expected_assemblers)
+  present_assemblers <- colnames(quast_result)[-1]
 
   if (length(present_assemblers) > 0) {{
     quast_table <- quast_result %>%
