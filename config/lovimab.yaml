@@ -30,7 +30,6 @@ assemblers:
   wtdbg2: true
   shasta: true
   miniasm: true
-  cap3: true
   # Add other assemblers if needed
 
 # --- REASSEMBLY ---
