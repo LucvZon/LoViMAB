@@ -15,7 +15,6 @@ SAMPLES = list(config["samples"].keys())
 ASSEMBLERS_CONFIG = config["assemblers"]
 REASSEMBLY_CONFIG = config["reassembly"]
 ACTIVE_ASSEMBLERS = [asm for asm, active in ASSEMBLERS_CONFIG.items() if active]
-PRIMARY_ASSEMBLERS = [asm for asm in ACTIVE_ASSEMBLERS if asm != "cap3"]
 ASSEMBLY_TYPES = ["primary", "secondary", "final"]
 
 # --- Define output directories ---
@@ -83,8 +82,6 @@ def get_assembly_fasta(wildcards):
         return os.path.join(ASSEMBLY_DIR, wildcards.sample, assembler, "Assembly.fasta")
     elif assembler == "miniasm":
         return os.path.join(ASSEMBLY_DIR, wildcards.sample, assembler, "final_assembly.fasta")
-    elif assembler == "cap3":
-         return os.path.join(ASSEMBLY_DIR, wildcards.sample, assembler, "final_reassembly.fasta")
     # Add other assemblers here if needed in the future
 
 # --- Helper function to handle different assembly types ---
