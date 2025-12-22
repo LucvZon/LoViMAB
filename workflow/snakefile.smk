@@ -585,25 +585,44 @@ rule run_checkv_generic:
         os.path.join(LOG_DIR, "run_checkv", "{assembly_type}", "{sample}_{assembler}.log")
     shell:
         """
-        # First, check if the input FASTA file is non-empty
+        # Initialize a success flag
+        run_success=false
+
+        # 1. Attempt to run CheckV only if input is not empty
         if [ -s {input} ]; then
-            # If it's not empty, run checkv normally
-            checkv end_to_end {input} {output.folder} -d {params.db} -t {threads} &> {log}
-        else
-            # If it is empty, log the reason and create empty but valid output files
-            echo "Input assembly for {wildcards.sample} / {wildcards.assembler} is empty. Skipping CheckV and creating dummy output files." > {log}
+            echo "Input found. Starting CheckV..." > {log}
             
-            # Create the main output directory
+            # Run CheckV. If it succeeds (exit code 0), set flag to true.
+            if checkv end_to_end {input} {output.folder} -d {params.db} -t {threads} >> {log} 2>&1; then
+                run_success=true
+                echo "CheckV completed successfully." >> {log}
+            else
+                echo "CheckV crashed or failed. See above for details." >> {log}
+                # do NOT exit here, fall through to the recovery block
+            fi
+        else
+            echo "Input assembly is empty." > {log}
+        fi
+
+        # 2. Handling Failure or Empty Input
+        # If the run was NOT successful (either empty input OR crashed), generate dummy files
+        if [ "$run_success" = false ]; then
+            echo "Generating dummy output files for downstream compatibility." >> {log}
+            
+            # Ensure the directory exists (in case CheckV didn't create it)
             mkdir -p {output.folder}
             
-            # Create empty versions of all expected CheckV output files
+            # Create empty fasta files
             touch {output.folder}/proviruses.fna
             touch {output.folder}/viruses.fna
             
-            # For TSV files, create them with just a header row to be safe
+            # Create TSV files with correct headers so pandas doesn't crash
             echo -e "contig_id\\tcontig_length\\tviral_length\\taai_expected_length\\taai_completeness\\taai_confidence\\taai_error\\taai_num_hits\\taai_top_hit\\taai_id\\taai_af\\thmm_completeness_lower\\thmm_completeness_upper\\thmm_num_hits\\tkmer_freq" > {output.folder}/completeness.tsv
+            
             echo -e "contig_id\\tcontig_length\\tprovirus\\tproviral_length\\tgene_count\\tviral_genes\\thost_genes\\tcheckv_quality\\tmiuvig_quality\\tcompleteness\\tcompleteness_method\\tcontamination\\tkmer_freq\\twarnings" > {output.folder}/quality_summary.tsv
+            
             echo -e "contig_id\\tcontig_length\\ttotal_genes\\tviral_genes\\thost_genes\\tprovirus\\tproviral_length\\thost_length\\tregion_types\\tregion_lengths\\tregion_coords_bp\\tregion_coords_genes\\tregion_viral_genes\\tregion_host_genes" > {output.folder}/contamination.tsv
+            
             echo -e "contig_id\\tcontig_length\\tkmer_freq\\tprediction_type\\tconfidence_level\\tconfidence_reason\\trepeat_length\\trepeat_count\\trepeat_n_freq\\trepeat_mode_base_freq\\trepeat_seq" > {output.folder}/complete_genomes.tsv
         fi
         """
