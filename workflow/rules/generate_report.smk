@@ -19,7 +19,8 @@ rule generate_quarto_report:
         target_reads=expand(os.path.join(READ_CLASSIFICATION_DIR, "{sample}.target_reads.fastq"), sample=SAMPLES),
 
         # --- Checkpoint / Flag Files (to ensure upstream rules are complete) ---
-        targeted_comparisons_done=os.path.join(STATS_DIR, "all_targeted_comparisons.done"),
+        # targeted_comparisons_done=os.path.join(STATS_DIR, "all_targeted_comparisons.done")
+        targeted_comparisons_done=expand(os.path.join(STATS_DIR, "targeted_comparisons_status", "{sample}.done"), sample=SAMPLES),
 
         # --- Configuration & Metadata Files ---
         config_file="config/lovimab.yaml",
