@@ -133,8 +133,8 @@ rule all:
         expand(os.path.join(RESULTS_DIR, "report", "{assembly_type}", "miuvig_global_summary.csv"), assembly_type=["primary", "secondary", "final"]),
 
         # --- Specific, Targeted Reports ---
-        os.path.join(STATS_DIR, "all_targeted_comparisons.done"),
-        os.path.join(STATS_DIR, "all_contig_mappings.done"),
+        expand(os.path.join(STATS_DIR, "targeted_comparisons_status", "{sample}.done"), sample=SAMPLES),
+        expand(os.path.join(STATS_DIR, "contig_mappings_status", "{sample}.done"), sample=SAMPLES),
         os.path.join(RESULTS_DIR, "report", "final_summary_report", "index.html")
 
 
@@ -142,70 +142,54 @@ rule all:
 #                          WORKFLOW RULES
 # ===================================================================
 
-def get_possible_quast_comparisons(wildcards):
-    """
-    Scans checkpoint outputs for all assembly types, samples, and assemblers
-    to determine which targeted QUAST reports to generate.
-    """
-    # Return empty immediately if no viruses of interest are configured
+# Refactored to look up only ONE sample at a time
+def get_sample_quast_comparisons(wildcards):
     if not VIRUSES_OF_INTEREST:
         return []
 
-    found_combos = set()
-
-    # Iterate through every combination    
-    for a_type in ASSEMBLY_TYPES:
-        for sample in SAMPLES:
-            for assembler in ACTIVE_ASSEMBLERS:
-                # Get the specific checkpoint output for this Type/Sample/Assembler combo
-                binned_dir = checkpoints.bin_contigs_by_taxonomy.get(
-                    assembly_type=a_type, sample=sample, assembler=assembler
-                ).output.binned_dir
-                
-                # Scan for fasta files
-                # Path: results/4_annotation/{type}/{sample}/binned_contigs/{assembler}/*.fasta
-                for fasta_file in glob.glob(os.path.join(str(binned_dir), "*.fasta")):
-                    virus_name = os.path.basename(fasta_file).replace(".fasta", "")
-                    
-                    if virus_name in VIRUSES_OF_INTEREST:
-                        # Store the unique (type, sample, virus) combination
-                        found_combos.add((a_type, sample, virus_name))
-
-    # Build final paths
     possible_reports = []
-    for a_type, sample, virus_name in found_combos:
-        possible_reports.append(
-            os.path.join(STATS_DIR, "targeted_quast", a_type, sample, virus_name, "report.html")
-        )
-        
+    # Only iterate for the current sample in the wildcard
+    sample = wildcards.sample 
+
+    for a_type in ASSEMBLY_TYPES:
+        for assembler in ACTIVE_ASSEMBLERS:
+            # Checkpoint lookup specific to this sample
+            binned_dir = checkpoints.bin_contigs_by_taxonomy.get(
+                assembly_type=a_type, sample=sample, assembler=assembler
+            ).output.binned_dir
+            
+            # Scan filesystem for this specific path
+            # If checkpoint hasn't run yet, Snakemake handles re-evaluation efficiently per-sample
+            for fasta_file in glob.glob(os.path.join(str(binned_dir), "*.fasta")):
+                virus_name = os.path.basename(fasta_file).replace(".fasta", "")
+                
+                if virus_name in VIRUSES_OF_INTEREST:
+                    possible_reports.append(
+                        os.path.join(STATS_DIR, "targeted_quast", a_type, sample, virus_name, "report.html")
+                    )
     return possible_reports
 
-def get_possible_contig_mappings(wildcards):
-    """
-    This function scans the checkpoint output to determine which binned contigs
-    can be mapped to their corresponding reference of interest.
-    """
-    # Return empty immediately if no viruses of interest are configured
+# Refactored to look up only ONE sample at a time
+def get_sample_contig_mappings(wildcards):
     if not VIRUSES_OF_INTEREST:
         return []
 
     possible_bam_files = []
+    sample = wildcards.sample
     
     for a_type in ASSEMBLY_TYPES:
-        for sample in SAMPLES:
-            for assembler in ACTIVE_ASSEMBLERS:
-                binned_dir = checkpoints.bin_contigs_by_taxonomy.get(
-                    assembly_type=a_type, sample=sample, assembler=assembler
-                ).output.binned_dir
+        for assembler in ACTIVE_ASSEMBLERS:
+            binned_dir = checkpoints.bin_contigs_by_taxonomy.get(
+                assembly_type=a_type, sample=sample, assembler=assembler
+            ).output.binned_dir
+            
+            for fasta_file in glob.glob(os.path.join(str(binned_dir), "*.fasta")):
+                virus_name = os.path.basename(fasta_file).replace(".fasta", "")
                 
-                for fasta_file in glob.glob(os.path.join(str(binned_dir), "*.fasta")):
-                    virus_name = os.path.basename(fasta_file).replace(".fasta", "")
-                    
-                    if virus_name in VIRUSES_OF_INTEREST:
-                        possible_bam_files.append(
-                            os.path.join(STATS_DIR, "contigs_to_ref", a_type, sample, assembler, f"{virus_name}.bam")
-                        )
-                    
+                if virus_name in VIRUSES_OF_INTEREST:
+                    possible_bam_files.append(
+                        os.path.join(STATS_DIR, "contigs_to_ref", a_type, sample, assembler, f"{virus_name}.bam")
+                    )
     return possible_bam_files
 
 # Step 1: Merge raw reads for a given sample
@@ -461,9 +445,9 @@ checkpoint bin_contigs_by_taxonomy:
 
 rule aggregate_targeted_comparisons:
     input:
-        get_possible_quast_comparisons
+        get_sample_quast_comparisons
     output:
-        touch(os.path.join(STATS_DIR, "all_targeted_comparisons.done"))
+        touch(os.path.join(STATS_DIR, "targeted_comparisons_status", "{sample}.done"))
 
 # Step 10: Run QUAST for all viruses of interest
 rule targeted_quast_comparison:
@@ -508,14 +492,22 @@ rule targeted_quast_comparison:
             labels_str = ",".join(labels)
             fastas_str = " ".join(fastas_to_compare)
 
-            shell(
-                "quast.py -o {output.out_dir} -r {params.reference} -t {threads} "
-                "-l '{labels_str}' {fastas_str} &> {log}"
-            )
+            try:
+                shell(
+                    """
+                    quast.py -t {threads} -o {output.out_dir} -r {params.reference} -l '{labels_str}' {fastas_str} &> {log}
+                    """
+                )
+            except Exception as e:
+                # If QUAST fails (e.g. exit code 4 because NO "good" contigs were found),
+                # log it and create dummy files so the pipeline proceeds.
+                shell("echo 'QUAST crashed or found no valid contigs. Creating placeholder files.' >> {log}")
+                shell("mkdir -p {output.out_dir}")
+                shell("touch {output.report} {output.transposed}")	
         else:
             # Fallback
             shell("mkdir -p {output.out_dir} && touch {output.report} && touch {output.transposed}")
-
+			
 
 # Step 11: Calculate assembly statistics
 rule calculate_stats_generic:
@@ -546,9 +538,9 @@ rule map_reads_generic:
 
 rule aggregate_contig_mappings:
     input:
-        get_possible_contig_mappings
+        get_sample_contig_mappings
     output:
-        touch(os.path.join(STATS_DIR, "all_contig_mappings.done"))
+        touch(os.path.join(STATS_DIR, "contig_mappings_status", "{sample}.done"))
 
 # Step 13: Map binned contigs back to their virus of interest
 rule map_binned_contigs_to_reference:
