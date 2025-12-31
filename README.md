@@ -1,11 +1,19 @@
 # LoViMAB
 Long-Read Viral Metagenome Assembly Benchmark (LoViMAB) is a scalable and reproducible Snakemake workflow designed to benchmark the performance of various long-read assemblers on viral metagenomic Nanopore data.
 
-Assembling complete viral genomes from complex metagenomes is a significant challenge. This pipeline addresses this by implementing a "semi-targeted" approach:
+LoViMAB employs a "semi-targeted" multi-tier assembly strategy to maximize genome recovery and compare tool performance across different levels of complexity.
 
-1. **Targeted Read Filtering**: Pre-filters raw Nanopore reads using a custom protein database (e.g., all human viruses) to enrich for sequences of interest.
-2. **Comparative Assembly**: Assembles the filtered reads using multiple state-of-the-art assemblers.
-3. **In-depth Quality Assessment**: Performs comprehensive, reference-free ([CheckV](https://bitbucket.org/berkeleylab/checkv)) and reference-based ([QUAST](https://github.com/ablab/quast)) quality control to generate detailed comparison reports.
+## Key Features
+
+- **Targeted Read Filtering**:
+	- Pre-filters raw Nanopore reads using a custom protein database (e.g., all human viruses) to enrich for sequences of interest.
+- **Multi-Tier Assembly Strategy**:
+	- **Primary**: Individual de novo assemblies from multiple state-of-the-art tools.
+    - **Secondary (Reassembly)**: Merging all primary contigs and re-assembling them to improve continuity.
+    - **Final**: A hybrid assembly combining re-assembled contigs with unique, clustered contigs from the primary pool (via MMseqs2).
+- **Comprehensive Evaluation**: Automated benchmarking of all three tiers using:
+ 	- **Reference-Free:** ([CheckV](https://bitbucket.org/berkeleylab/checkv)) for completeness and quality.
+    - **Reference-Based:** ([QUAST](https://github.com/ablab/quast)) for accuracy against specific viruses of interest.
 
 This workflow is designed to help researchers evaluate which assembly tool is most appropriate for their data, especially in scenarios where reliable reference genomes are unavailable or highly diverse.
 
