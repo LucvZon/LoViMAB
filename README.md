@@ -193,6 +193,9 @@ Adjust --cores 24 if necessary.
 	- -> Contig Mapping: The binned contigs are also mapped to the reference genome to visualize alignment.
 - **Output**: A final, comparative QUAST report showing which assembler performed best for each targeted virus.
 
+### 7. Report summary
+- A Quarto book is rendered into results/report/final_summary_report/index.html.
+
 # Outputs
 
 - `results/1_quality_control/`: Cleaned FASTQ files.
