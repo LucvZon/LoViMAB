@@ -195,7 +195,6 @@ Adjust --cores 24 if necessary.
 
 # Databases
 
-LoViMAB requires a DIAMOND and CheckV database. Instructions on how to acquire/build these databases:
-
-- [https://bitbucket.org/berkeleylab/checkv](https://bitbucket.org/berkeleylab/checkv)
-- [https://github.com/bbuchfink/diamond/wiki](https://github.com/bbuchfink/diamond/wiki)
+LoViMAB requires two external databases:
+1. [DIAMOND](https://github.com/bbuchfink/diamond/wiki): A protein database (e.g., RVDB or NCBI Viral) formatted with diamond makedb.
+2. [CheckV](https://bitbucket.org/berkeleylab/checkv): The standard CheckV database.
