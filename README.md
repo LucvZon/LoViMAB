@@ -3,7 +3,7 @@ Long-Read Viral Metagenome Assembly Benchmark (LoViMAB) is a scalable and reprod
 
 LoViMAB employs a "semi-targeted" multi-tier assembly strategy to maximize genome recovery and compare tool performance across different levels of complexity.
 
-## Key Features
+# Key Features
 
 - **Targeted Read Filtering**:
 	- Pre-filters raw Nanopore reads using a custom protein database (e.g., all human viruses) to enrich for sequences of interest.
@@ -192,6 +192,15 @@ Adjust --cores 24 if necessary.
 	- -> Comparative QUAST: For each virus of interest (e.g., Monkeypox virus), the binned contigs from all assemblers are compared against the official reference genome.
 	- -> Contig Mapping: The binned contigs are also mapped to the reference genome to visualize alignment.
 - **Output**: A final, comparative QUAST report showing which assembler performed best for each targeted virus.
+
+# Outputs
+
+- `results/1_quality_control/`: Cleaned FASTQ files.
+- `results/3_assemblies/`: Raw outputs for Primary tools.
+- `results/4_reassemblies/`: Outputs for Secondary re-assemblies.
+- `results/6_final_assembly/`: The integrated Final assembly files.
+- `results/8_stats_and_qc/`: Detailed CheckV, QUAST, and mapping logs.
+- `results/report/final_summary_report/`: The interactive HTML benchmark report.
 
 # Databases
 
