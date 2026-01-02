@@ -1,4 +1,4 @@
-name: lovimab
+name: virbench
 channels:
   - conda-forge
   - bioconda
