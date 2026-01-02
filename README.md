@@ -10,7 +10,7 @@ VirBench employs a "semi-targeted" multi-tier assembly strategy to maximize geno
 - **Multi-Tier Assembly Strategy**:
 	- **Primary**: Individual de novo assemblies from multiple state-of-the-art tools.
     - **Secondary (Reassembly)**: Merging all primary contigs and re-assembling them to improve continuity.
-    - **Final**: A hybrid assembly combining re-assembled contigs with unique, clustered contigs from the primary pool (via MMseqs2).
+    - **Final**: A hybrid assembly combining re-assembled contigs with unique, clustered contigs from the primary pool (via [MMseqs2](https://github.com/soedinglab/MMseqs2)).
 - **Comprehensive Evaluation**: Automated benchmarking of all three tiers using:
  	- **Reference-Free:** ([CheckV](https://bitbucket.org/berkeleylab/checkv)) for completeness and quality.
     - **Reference-Based:** ([QUAST](https://github.com/ablab/quast)) for accuracy against specific viruses of interest.
