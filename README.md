@@ -1,5 +1,5 @@
-<p>
-  <img src="images/virbench_logo.png" width="200" alt="VirBench Logo" align="left">
+<p align="center">
+  <img src="images/virbench_logo.png" width="200" alt="VirBench Logo">
 </p>
 
 # Introduction
