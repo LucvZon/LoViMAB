@@ -8,7 +8,7 @@ import os
 import glob
 
 # --- Load Configuration ---
-configfile: "config/lovimab.yaml"
+configfile: "config/virbench.yaml"
 
 # --- Global Variables ---
 SAMPLES = list(config["samples"].keys())
