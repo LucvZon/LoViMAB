@@ -1,5 +1,5 @@
 # The pipeline has been tested before with these exact versions.
-name: lovimab
+name: virbench
 channels:
   - conda-forge
   - bioconda
