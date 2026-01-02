@@ -1,4 +1,8 @@
-# VirBench
+<p align="center">
+  <img src="images/virbench_logo.png" width="250" alt="VirBench Logo">
+</p>
+
+# Introduction
 VirBench (Viral Assembly Benchmark) is a scalable and reproducible Snakemake workflow designed to benchmark the performance of various long-read assemblers on viral metagenomic Nanopore data.
 
 VirBench employs a "semi-targeted" multi-tier assembly strategy to maximize genome recovery and compare tool performance across different levels of complexity.
